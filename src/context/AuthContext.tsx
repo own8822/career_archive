@@ -25,15 +25,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       action,
       targetInfo,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      ipAddress: '192.168.1.105'
+      ipAddress: '192.168.1.100'
     };
     setAccessLogs(prev => [newLog, ...prev]);
   };
 
   const switchUser = (role: UserRole) => {
-    const targetUser = INITIAL_USERS.find(u => u.role === role) || INITIAL_USERS[0];
-    setCurrentUser(targetUser);
-    logAction('login', `${role === 'admin' ? '관리자(작성/수정 권한)' : '팀원(읽기 전용)'} 모드로 전환`);
+    const target = INITIAL_USERS.find(u => u.role === role) || INITIAL_USERS[0];
+    setCurrentUser(target);
+    logAction('login', `${role === 'admin' ? '관리자' : '팀원(읽기 전용)'} 모드 전환`);
   };
 
   const isAdmin = currentUser.role === 'admin';
