@@ -1,0 +1,73 @@
+﻿# Environment Variables & Secrets / API Keys
+.env
+.env.*
+!.env.example
+*.env
+*.secret
+*.secrets
+secrets/
+secret/
+*.key
+*.pem
+*.cert
+*.token
+credentials.json
+client_secret*.json
+service-account*.json
+apikey*
+api_keys*
+
+# PDF Documents
+*.pdf
+*.PDF
+
+# Student Personal Information & Sensitive Data
+students/
+student_info/
+personal_data/
+privacy/
+data/students/
+data/personal/
+data/private/
+sensitive/
+*.student.*
+*.csv
+*.xlsx
+*.xls
+*.tsv
+
+# OS Generated Files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+.DS_Store
+
+# IDE & Editor Settings
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs & Temporary Files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node / Python / Build Output
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+dist/
+build/
+coverage/
+.cache/
