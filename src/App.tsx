@@ -1,26 +1,48 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { PadletColumn } from './components/PadletColumn';
-import { AddRecordModal } from './components/AddRecordModal';
+import { RecordModal } from './components/RecordModal';
 import { AddStudentModal } from './components/AddStudentModal';
+import { EditStudentModal } from './components/EditStudentModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
-import { INITIAL_STUDENTS } from './data/mockData';
+import { archiveStorage } from './services/storage';
 import { Student, CounselingRecord, PdfAttachment } from './types';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, Database } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
   const { isAdmin, logAction } = useAuth();
 
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
 
-  // Modals
-  const [isAddRecordOpen, setIsAddRecordOpen] = useState(false);
+  // Modal States
+  const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [targetStudentForRecord, setTargetStudentForRecord] = useState<Student | null>(null);
+  const [recordToEdit, setRecordToEdit] = useState<CounselingRecord | null>(null);
+
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
+  const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+
   const [selectedPdf, setSelectedPdf] = useState<{ pdf: PdfAttachment; studentName: string } | null>(null);
+
+  // 1. Initial Load from IndexedDB permanent storage
+  useEffect(() => {
+    const loadStoredData = async () => {
+      try {
+        const loadedStudents = await archiveStorage.getAllStudents();
+        setStudents(loadedStudents);
+      } catch (err) {
+        console.error('Failed to load students from permanent storage:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStoredData();
+  }, []);
 
   // Available cohorts list
   const availableCohorts = useMemo(() => {
@@ -43,59 +65,140 @@ export const AppContent: React.FC = () => {
     });
   }, [students, searchKeyword, selectedCohort]);
 
-  // Handler: Add new record to specific student
-  const handleSaveRecord = (studentId: string, newRecord: CounselingRecord) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          return {
-            ...s,
-            records: [newRecord, ...s.records],
-          };
-        }
-        return s;
-      })
-    );
-    logAction('create_record', `${newRecord.title} 기록 추가`);
+  // Handler: Add or Update Record
+  const handleSaveRecord = async (
+    studentId: string,
+    record: CounselingRecord,
+    isEditing: boolean
+  ) => {
+    try {
+      if (isEditing) {
+        await archiveStorage.updateRecord(studentId, record);
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.id === studentId) {
+              return {
+                ...s,
+                records: s.records.map((r) => (r.id === record.id ? record : r)),
+              };
+            }
+            return s;
+          })
+        );
+        logAction('update_record', `${record.title} 기록 수정 완료`);
+      } else {
+        await archiveStorage.addRecord(studentId, record);
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.id === studentId) {
+              return {
+                ...s,
+                records: [record, ...s.records],
+              };
+            }
+            return s;
+          })
+        );
+        logAction('create_record', `${record.title} 기록 영구 등록 완료`);
+      }
+    } catch (err) {
+      console.error('Failed to save record to storage:', err);
+      alert('기록 저장 중 오류가 발생했습니다.');
+    }
   };
 
-  // Handler: Delete record
-  const handleDeleteRecord = (studentId: string, recordId: string) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          return {
-            ...s,
-            records: s.records.filter((r) => r.id !== recordId),
-          };
-        }
-        return s;
-      })
-    );
-    logAction('delete_record', '상담 기록 삭제');
+  // Handler: Delete Record
+  const handleDeleteRecord = async (studentId: string, recordId: string) => {
+    try {
+      await archiveStorage.deleteRecord(studentId, recordId);
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id === studentId) {
+            return {
+              ...s,
+              records: s.records.filter((r) => r.id !== recordId),
+            };
+          }
+          return s;
+        })
+      );
+      logAction('delete_record', '상담 기록 삭제 완료');
+    } catch (err) {
+      console.error('Failed to delete record from storage:', err);
+      alert('기록 삭제 중 오류가 발생했습니다.');
+    }
   };
 
   // Handler: Add new student
-  const handleAddStudent = (newStudent: Student) => {
-    setStudents((prev) => [...prev, newStudent]);
-    logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 추가`);
+  const handleAddStudent = async (newStudent: Student) => {
+    try {
+      await archiveStorage.addStudent(newStudent);
+      setStudents((prev) => [...prev, newStudent]);
+      logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 영구 등록`);
+    } catch (err) {
+      console.error('Failed to add student to storage:', err);
+      alert('학생 등록 중 오류가 발생했습니다.');
+    }
+  };
+
+  // Handler: Update student
+  const handleSaveStudent = async (studentId: string, name: string, cohort: string) => {
+    try {
+      await archiveStorage.updateStudent(studentId, name, cohort);
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, name, cohort } : s))
+      );
+      logAction('update_student', `${name} (${cohort}) 정보 수정 완료`);
+    } catch (err) {
+      console.error('Failed to update student in storage:', err);
+      alert('학생 정보 수정 중 오류가 발생했습니다.');
+    }
   };
 
   // Handler: Delete student
-  const handleDeleteStudent = (studentId: string) => {
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
-    logAction('delete_record', '학생 삭제');
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      await archiveStorage.deleteStudent(studentId);
+      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+      logAction('delete_student', '학생 영구 삭제 완료');
+    } catch (err) {
+      console.error('Failed to delete student from storage:', err);
+      alert('학생 삭제 중 오류가 발생했습니다.');
+    }
   };
 
-  // Quick open Add Record modal for specific student
-  const handleOpenAddRecordForColumn = (student: Student) => {
+  // Quick Open Modal Helpers
+  const handleOpenAddRecord = (student: Student) => {
     setTargetStudentForRecord(student);
-    setIsAddRecordOpen(true);
+    setRecordToEdit(null);
+    setIsRecordModalOpen(true);
   };
+
+  const handleOpenEditRecord = (student: Student, record: CounselingRecord) => {
+    setTargetStudentForRecord(student);
+    setRecordToEdit(record);
+    setIsRecordModalOpen(true);
+  };
+
+  const handleOpenEditStudent = (student: Student) => {
+    setStudentToEdit(student);
+    setIsEditStudentOpen(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex items-center space-x-2 text-teal-600 font-semibold text-sm">
+          <Database className="w-5 h-5 animate-spin" />
+          <span>영구 데이터 저장소를 불러오는 중...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-teal-50/40 text-slate-800 font-sans flex flex-col selection:bg-teal-500 selection:text-white">
-      {/* 1. Sticky Header with Search & Filter & Role Switcher */}
+      {/* 1. Header with Search & Filter & Role Switcher */}
       <Header
         searchKeyword={searchKeyword}
         onSearchChange={setSearchKeyword}
@@ -108,16 +211,16 @@ export const AppContent: React.FC = () => {
       {/* 2. Main Masonry Container (Pinterest-style Multi-column) */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
         
-        {/* Quick Guide & Stats summary */}
-        <div className="mb-5 flex items-center justify-between text-xs text-slate-500">
+        {/* Top Info Notice */}
+        <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span>
             <span>
-              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지도 박스가 메이슨리 형태로 배치되어 있습니다.
+              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지도 박스 (새로고침 후에도 자동 보존)
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 hidden sm:inline">
-            아래로 스크롤하여 전체 학생의 상담·첨삭 기록을 확인하세요
+          <span className="text-[11px] text-teal-700 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-full font-medium">
+            🔒 로컬 비공개 영구 저장소 활성화됨 (GitHub 공개 방지)
           </span>
         </div>
 
@@ -129,8 +232,10 @@ export const AppContent: React.FC = () => {
                 key={student.id}
                 student={student}
                 isAdmin={isAdmin}
-                onAddRecord={handleOpenAddRecordForColumn}
+                onAddRecord={handleOpenAddRecord}
+                onEditRecord={handleOpenEditRecord}
                 onDeleteRecord={handleDeleteRecord}
+                onEditStudent={handleOpenEditStudent}
                 onDeleteStudent={handleDeleteStudent}
                 onOpenPdf={(pdf, studentName) => setSelectedPdf({ pdf, studentName })}
               />
@@ -166,12 +271,16 @@ export const AppContent: React.FC = () => {
       </main>
 
       {/* 3. Modals */}
-      {/* Add Record Modal */}
-      <AddRecordModal
-        isOpen={isAddRecordOpen}
-        onClose={() => setIsAddRecordOpen(false)}
+      {/* Create / Edit Record Modal */}
+      <RecordModal
+        isOpen={isRecordModalOpen}
+        onClose={() => {
+          setIsRecordModalOpen(false);
+          setRecordToEdit(null);
+        }}
         students={students}
         preselectedStudent={targetStudentForRecord}
+        recordToEdit={recordToEdit}
         onSaveRecord={handleSaveRecord}
       />
 
@@ -180,6 +289,17 @@ export const AppContent: React.FC = () => {
         isOpen={isAddStudentOpen}
         onClose={() => setIsAddStudentOpen(false)}
         onAddStudent={handleAddStudent}
+      />
+
+      {/* Edit Student Modal */}
+      <EditStudentModal
+        isOpen={isEditStudentOpen}
+        student={studentToEdit}
+        onClose={() => {
+          setIsEditStudentOpen(false);
+          setStudentToEdit(null);
+        }}
+        onSaveStudent={handleSaveStudent}
       />
 
       {/* PDF Zoom Viewer Modal */}

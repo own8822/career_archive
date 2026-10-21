@@ -9,11 +9,12 @@ export interface User {
 
 export interface PdfAttachment {
   id: string;
-  title: string;
   fileName: string;
-  fileSize?: string;
+  fileSize: string;
   uploadedAt: string;
-  previewSnippet: string;
+  dataUrl: string; // Base64 data URL or Blob URL for full viewing and downloading
+  thumbnailUrl?: string; // Rendered image data URL of page 1
+  pageCount?: number;
 }
 
 export interface CounselingRecord {
@@ -21,8 +22,8 @@ export interface CounselingRecord {
   studentId: string;
   date: string; // YYYY-MM-DD
   title: string;
-  content: string; // 긴 상담 및 첨삭 내용 (접기/펼치기 대상)
-  pdf?: PdfAttachment;
+  content: string; // 긴 상담 및 첨삭 내용 (줄바꿈 보존)
+  pdfs: PdfAttachment[]; // 여러 개 PDF 첨부 지원
 }
 
 export interface Student {
