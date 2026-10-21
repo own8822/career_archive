@@ -21,12 +21,12 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
   onOpenPdf,
 }) => {
   return (
-    <div className="w-80 shrink-0 flex flex-col max-h-full rounded-2xl bg-white/70 backdrop-blur-md border border-sky-100 shadow-xs">
+    <div className="break-inside-avoid mb-5 w-full rounded-2xl bg-white/80 backdrop-blur-md border border-sky-100/90 shadow-2xs hover:shadow-xs transition-shadow">
       
       {/* Column Header: Student Name + Cohort + Delete Action */}
-      <div className="p-3.5 pb-2 flex items-center justify-between border-b border-sky-100/70">
+      <div className="p-4 pb-3 flex items-center justify-between border-b border-sky-100/70 bg-gradient-to-r from-white via-sky-50/30 to-teal-50/20 rounded-t-2xl">
         <div className="flex items-center space-x-2 truncate">
-          <h3 className="text-sm font-bold text-slate-800 truncate tracking-tight">
+          <h3 className="text-base font-bold text-slate-800 truncate tracking-tight">
             {student.name}
           </h3>
           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80 shrink-0">
@@ -37,24 +37,24 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         {isAdmin && (
           <button
             onClick={() => {
-              if (confirm(`'${student.name}' 학생의 모든 기록과 열을 삭제하시겠습니까?`)) {
+              if (confirm(`'${student.name}' 학생의 모든 기록과 카드를 삭제하시겠습니까?`)) {
                 onDeleteStudent(student.id);
               }
             }}
             className="text-slate-300 hover:text-rose-500 p-1 rounded-md transition-colors"
-            title="학생 열 삭제"
+            title="학생 삭제"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      {/* Quick Add Button directly under column header (Padlet style '+') */}
+      {/* Quick Add Button directly under student header (Admin only) */}
       {isAdmin && (
-        <div className="px-3 pt-2">
+        <div className="px-3.5 pt-3">
           <button
             onClick={() => onAddRecord(student)}
-            className="w-full py-1.5 px-3 rounded-lg border border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-teal-700 text-xs font-semibold flex items-center justify-center space-x-1 transition-all shadow-2xs active:scale-[0.99]"
+            className="w-full py-1.5 px-3 rounded-xl border border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-teal-700 text-xs font-semibold flex items-center justify-center space-x-1 transition-all shadow-2xs active:scale-[0.99]"
             title={`${student.name} 학생에게 새 상담·첨삭 기록 추가`}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -63,8 +63,8 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         </div>
       )}
 
-      {/* Vertical Stack of Records */}
-      <div className="p-3 space-y-3 overflow-y-auto flex-1">
+      {/* Vertical Stack of Records: No inner scrollbar, auto height */}
+      <div className="p-3.5 space-y-3">
         {student.records.length > 0 ? (
           student.records.map((record) => (
             <RecordCard
@@ -80,7 +80,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
             />
           ))
         ) : (
-          <div className="py-8 px-4 text-center text-xs text-slate-400 bg-white/50 rounded-xl border border-dashed border-slate-200">
+          <div className="py-6 px-4 text-center text-xs text-slate-400 bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
             등록된 기록이 없습니다.
             {isAdmin && (
               <p className="text-[11px] text-teal-600 font-medium mt-1">

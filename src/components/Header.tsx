@@ -37,11 +37,11 @@ export const Header: React.FC<HeaderProps> = ({
                   취업지도 아카이브
                 </h1>
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80">
-                  패들렛 보드
+                  메이슨리 보드
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 hidden sm:block">
-                학생별 세로 열(Shelf) 기반 상담·첨삭 기록 보드
+                학생별 상담·첨삭 기록 반응형 보드
               </p>
             </div>
           </div>
@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Action: Role Toggle Pill & Add Student Column Button */}
+          {/* Right Action: Role Toggle Pill & Add Student Button */}
           <div className="flex items-center space-x-2 shrink-0">
             
             {/* Role Toggle Pill */}
@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-white text-slate-900 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="관리자: 학생 열 추가, 기록 등록/수정/삭제 가능"
+                title="관리자: 학생 추가, 기록 등록/수정/삭제 가능"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
                 <span>관리자</span>
@@ -134,10 +134,10 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onOpenAddStudent}
                 className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors"
-                title="새로운 학생 세로 열 추가"
+                title="새로운 학생 추가"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>학생 열 추가</span>
+                <span>학생 추가</span>
               </button>
             )}
 

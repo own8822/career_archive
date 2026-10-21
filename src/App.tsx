@@ -75,19 +75,19 @@ export const AppContent: React.FC = () => {
     logAction('delete_record', '상담 기록 삭제');
   };
 
-  // Handler: Add new student column
+  // Handler: Add new student
   const handleAddStudent = (newStudent: Student) => {
     setStudents((prev) => [...prev, newStudent]);
-    logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 열 추가`);
+    logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 추가`);
   };
 
-  // Handler: Delete student column
+  // Handler: Delete student
   const handleDeleteStudent = (studentId: string) => {
     setStudents((prev) => prev.filter((s) => s.id !== studentId));
-    logAction('delete_record', '학생 열 삭제');
+    logAction('delete_record', '학생 삭제');
   };
 
-  // Quick open Add Record modal for specific student column
+  // Quick open Add Record modal for specific student
   const handleOpenAddRecordForColumn = (student: Student) => {
     setTargetStudentForRecord(student);
     setIsAddRecordOpen(true);
@@ -105,10 +105,25 @@ export const AppContent: React.FC = () => {
         onOpenAddStudent={() => setIsAddStudentOpen(true)}
       />
 
-      {/* 2. Main Padlet Shelf Canvas (Horizontal Scroll Lane) */}
-      <main className="flex-1 overflow-x-auto p-4 sm:p-6 flex items-start space-x-5">
+      {/* 2. Main Masonry Container (Pinterest-style Multi-column) */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6">
+        
+        {/* Quick Guide & Stats summary */}
+        <div className="mb-5 flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+            <span>
+              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지도 박스가 메이슨리 형태로 배치되어 있습니다.
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-400 hidden sm:inline">
+            아래로 스크롤하여 전체 학생의 상담·첨삭 기록을 확인하세요
+          </span>
+        </div>
+
         {filteredStudents.length > 0 ? (
-          <>
+          /* Responsive Masonry Multi-column: 1 col on mobile -> 2 on sm -> 3 on lg -> 4 on xl */
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5 [column-fill:_balance]">
             {filteredStudents.map((student) => (
               <PadletColumn
                 key={student.id}
@@ -121,30 +136,30 @@ export const AppContent: React.FC = () => {
               />
             ))}
 
-            {/* End of Columns: Add Column Tile (Admin Only) */}
+            {/* Quick Add Student Tile in Masonry Stream (Admin Only) */}
             {isAdmin && (
               <div
                 onClick={() => setIsAddStudentOpen(true)}
-                className="w-72 shrink-0 rounded-2xl border-2 border-dashed border-sky-200 hover:border-teal-400 bg-white/40 hover:bg-white/80 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] group"
+                className="break-inside-avoid mb-5 w-full rounded-2xl border-2 border-dashed border-sky-200 hover:border-teal-400 bg-white/50 hover:bg-white/80 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] group shadow-2xs hover:shadow-xs"
               >
                 <div className="w-10 h-10 rounded-full bg-teal-50 group-hover:bg-teal-100 text-teal-600 flex items-center justify-center mb-2 transition-colors">
                   <Plus className="w-5 h-5" />
                 </div>
                 <h4 className="text-xs font-bold text-slate-700 group-hover:text-teal-700 transition-colors">
-                  새 학생 열 추가
+                  새 학생 추가
                 </h4>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  클릭하여 새 학생의 세로 열을 생성합니다.
+                  클릭하여 새 학생 박스를 보드에 생성합니다.
                 </p>
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="w-full flex flex-col items-center justify-center py-24 text-center">
             <div className="w-12 h-12 rounded-full bg-white shadow-2xs border border-sky-100 flex items-center justify-center text-teal-500 mb-3">
               <Users className="w-6 h-6" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">검색된 학생 열이 없습니다</p>
+            <p className="text-sm font-semibold text-slate-700">일치하는 학생이 없습니다</p>
             <p className="text-xs text-slate-400 mt-1">학생 이름이나 기수 필터를 다시 확인해보세요.</p>
           </div>
         )}
@@ -160,7 +175,7 @@ export const AppContent: React.FC = () => {
         onSaveRecord={handleSaveRecord}
       />
 
-      {/* Add Student Column Modal */}
+      {/* Add Student Modal */}
       <AddStudentModal
         isOpen={isAddStudentOpen}
         onClose={() => setIsAddStudentOpen(false)}
