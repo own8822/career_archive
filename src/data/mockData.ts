@@ -1,4 +1,4 @@
-import { Student, User, AccessLog } from '../types';
+import { Student, User } from '../types';
 
 export const INITIAL_USERS: User[] = [
   {
@@ -9,22 +9,9 @@ export const INITIAL_USERS: User[] = [
   },
   {
     id: 'u-viewer',
-    name: '팀원',
+    name: '열람자',
     role: 'viewer',
     email: 'viewer@career.archive',
-  }
-];
-
-export const INITIAL_ACCESS_LOGS: AccessLog[] = [
-  {
-    id: 'log-1',
-    userId: 'u-admin',
-    userName: '관리자',
-    role: 'admin',
-    action: 'login',
-    timestamp: '2026-10-21 09:00:00',
-    ipAddress: '192.168.1.100',
-    targetInfo: '관리자 시스템 로그인'
   }
 ];
 
@@ -36,36 +23,36 @@ export const INITIAL_STUDENTS: Student[] = [
     createdAt: '2026-09-01',
     records: [
       {
-        id: 'rec-1-2',
+        id: 'rec-1-1',
         studentId: 'std-1',
         date: '2026-10-18',
         title: '현대해상 자기소개서 첨삭',
         content: `[현대해상 IT 직무 자기소개서 피드백]
-- 1번 지원동기:
+- 지원동기:
 보험 도메인의 안정성과 디지털 혁신에 대한 관심도가 잘 드러났습니다. 다만 금융 IT 환경에서 가장 중요한 '트랜잭션 무결성'과 '보안 인식'을 경험과 연결지어 2~3줄 보강하면 완성도가 훨씬 높아집니다.
 
-- 2번 직무 역량:
-Redis 캐싱 도입으로 응답 시간을 단축한 사례가 좋습니다. 단순한 수치 나열보다는 도입 과정에서 겪은 캐시 무효화(Cache Invalidation) 고민을 간략히 덧붙여주세요.
+- 직무 역량:
+Redis 캐싱 도입으로 응답 시간을 단축한 사례가 좋습니다. 단순 수치 나열보다는 캐시 무효화(Cache Invalidation) 고민 과정을 간략히 덧붙여주세요.
 
-- 3번 협업 및 갈등 해결:
-일정 지연 상황에서 Swagger 문서 자동화로 팀원들과 싱크를 맞춘 일화가 매우 적절합니다. 본인의 주도적 액션을 강조하세요.`,
+- 협업 갈등 해결:
+Swagger 문서 자동화로 팀원들과 싱크를 맞춘 일화가 매우 적절합니다. 본인의 주도적 액션을 강조하세요.`,
         pdf: {
-          id: 'pdf-1-2',
-          title: '김민준_현대해상_자소서_첨삭본.pdf',
-          fileName: '김민준_현대해상_자소서_첨삭본.pdf',
+          id: 'pdf-1-1',
+          title: '김민준_현대해상_자소서_첨삭.pdf',
+          fileName: '김민준_현대해상_자소서_첨삭.pdf',
           fileSize: '1.8 MB',
           uploadedAt: '2026-10-18',
-          previewText: '1. 지원동기 및 포부 (첨삭 메모: 금융 도메인 이해도 강조 완료)\n2. 직무 전문성 (첨삭 메모: 캐시 무효화 트러블슈팅 문단 추가 권장)\n3. 협업 갈등 극복 사례 (Good!)'
+          previewSnippet: '지원동기: 금융 IT 트랜잭션 무결성 문단 보강\n직무역량: Redis 캐싱 전후 TPS 150 -> 650 수치 강조\n협업: Swagger API 문서화 적극 코칭 완료'
         }
       },
       {
-        id: 'rec-1-1',
+        id: 'rec-1-2',
         studentId: 'std-1',
-        date: '2026-09-15',
-        title: '기본 기술이력서 피드백',
-        content: `프로젝트 성과를 단순 나열하지 않고 STAR 기법으로 수정하도록 지도함.
-- 주요 사용 기술의 선택 이유를 명확히 작성할 것.
-- GitHub 리포지토리 README 최신화 및 데모 링크 연결 확인.`
+        date: '2026-09-25',
+        title: '기술 이력서 초안 피드백',
+        content: `프로젝트 경험을 단순 기술 나열식에서 STAR 기법으로 전면 재배치했습니다.
+- 백엔드 성능 최적화 파트에서 DB 인덱스 튜닝 경험을 상단으로 이동.
+- 모니터링 툴(Prometheus/Grafana) 활용 경험 1줄 보강 안내.`
       }
     ]
   },
@@ -90,8 +77,15 @@ Redis 캐싱 도입으로 응답 시간을 단축한 사례가 좋습니다. 단
           fileName: '이서연_포트폴리오_슬라이드_피드백.pdf',
           fileSize: '3.5 MB',
           uploadedAt: '2026-10-15',
-          previewText: 'Page 1: 케이스 스터디 목차 구조 개선\nPage 3: 사용자 인터뷰 페르소나 그래프 위치 수정\nPage 7: 디자인 시스템 컴포넌트 명세 추가'
+          previewSnippet: 'Slide 1: 케이스 스터디 문제 정의 인포그래픽\nSlide 3: 페르소나 및 사용자 여정 지도 피드백\nSlide 7: 디자인 토큰 및 컴포넌트 라이브러리 검토'
         }
+      },
+      {
+        id: 'rec-2-2',
+        studentId: 'std-2',
+        date: '2026-09-20',
+        title: '이력서 자기소개서 초안 교정',
+        content: `디자이너로서의 문제 해결 관점과 협업 커뮤니케이션 역량을 두괄식으로 정돈. 감성적인 서술보다는 프로덕트 지표(전환율, 체류시간)를 개선한 구체적 근거를 추가하도록 코칭함.`
       }
     ]
   },
@@ -107,7 +101,7 @@ Redis 캐싱 도입으로 응답 시간을 단축한 사례가 좋습니다. 단
         date: '2026-10-12',
         title: '기술이력서 첨삭',
         content: `[프론트엔드 이력서 정밀 첨삭]
-- 타이틀: "웹 경험의 렌더링 병목을 없애는 프론트엔드 개발자"로 정돈.
+- 헤드라인 타이틀: "웹 경험의 렌더링 병목을 없애는 프론트엔드 개발자"로 정돈.
 - Lighthouse 성능 지표 62점 -> 94점 개선 수치 헤드라인 배치.
 - 가상 스크롤(Virtual Scroll) 직접 구현 경험을 핵심 강점으로 부각하도록 피드백했습니다.`,
         pdf: {
@@ -116,8 +110,15 @@ Redis 캐싱 도입으로 응답 시간을 단축한 사례가 좋습니다. 단
           fileName: '박도현_기술이력서_피드백_v2.pdf',
           fileSize: '1.2 MB',
           uploadedAt: '2026-10-12',
-          previewText: 'Page 1: 헤드라인 카피 및 핵심 역량 요약\nPage 2: 프로젝트 성능 개선 지표 붉은펜 교정'
+          previewSnippet: 'Header: 성능 개선 전문 프론트엔드 엔지니어\nProject 1: 가상 스크롤 구현 (DOM 노드 98% 절감)\nCore Tech: React, TypeScript, Next.js'
         }
+      },
+      {
+        id: 'rec-3-2',
+        studentId: 'std-3',
+        date: '2026-09-28',
+        title: '1차 기술면접 대비 코칭',
+        content: `React 리렌더링 원리(Fiber 아키텍처, useMemo/useCallback 사용 기준)와 브라우저 렌더링 파이프라인(CRP) 질문에 대해 두괄식으로 답변하는 연습을 집중 진행함.`
       }
     ]
   },
@@ -134,7 +135,32 @@ Redis 캐싱 도입으로 응답 시간을 단축한 사례가 좋습니다. 단
         title: '취업 방향 상담',
         content: `[하반기 지원 전략 및 일정 수립]
 - 서비스 기획(PM) 포지션과 데이터 분석가 포지션 중 본인의 강점인 SQL 쿼리 작성 역량을 살릴 수 있는 데이터 기반 PM으로 타겟팅 확정.
-- 10월 3주차까지 지원 포트폴리오(PRD 형태) 1종 완성 후 2차 첨삭 진행하기로 협의.`
+- 10월 3주차까지 지원 포트폴리오(PRD 형태) 1종 완성 후 2차 첨삭 진행하기로 협의.`,
+        pdf: {
+          id: 'pdf-4-1',
+          title: '최수아_신입PM_취업로드맵_계획서.pdf',
+          fileName: '최수아_신입PM_취업로드맵_계획서.pdf',
+          fileSize: '0.9 MB',
+          uploadedAt: '2026-10-10',
+          previewSnippet: '1단계: 데이터 기반 PRD 기획서 1종 제작\n2단계: SQL 코호트 분석 포트폴리오 추가\n3단계: 11월 공채 및 수시채용 동시 지원'
+        }
+      }
+    ]
+  },
+  {
+    id: 'std-5',
+    name: '한지은',
+    cohort: '8기',
+    createdAt: '2026-10-05',
+    records: [
+      {
+        id: 'rec-5-1',
+        studentId: 'std-5',
+        date: '2026-10-16',
+        title: '신입 개발자 첫 이력서 상담',
+        content: `비전공 전환 후 첫 이력서 작성 가이드.
+- 본인의 강점인 빠른 학습 속도와 꼼꼼한 코드 리뷰 경험을 부각하도록 조언.
+- 팀 프로젝트 내에서 담당했던 기능 단위(인증/인가, JWT 로그인)를 명확히 작성할 것을 권장함.`
       }
     ]
   }

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, FileText, Check } from 'lucide-react';
 import { Student, CounselingRecord, PdfAttachment } from '../types';
 
 interface AddRecordModalProps {
@@ -25,8 +25,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const [hasPdf, setHasPdf] = useState(false);
   const [pdfFileName, setPdfFileName] = useState('');
 
-  // preselectedStudent 변경 시 동기화
-  React.useEffect(() => {
+  useEffect(() => {
     if (preselectedStudent) {
       setSelectedStudentId(preselectedStudent.id);
     } else if (students.length > 0 && !selectedStudentId) {
@@ -39,7 +38,7 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentId || !title.trim() || !content.trim()) {
-      alert('학생, 제목, 상담·첨삭 내용을 모두 입력해주세요.');
+      alert('학생, 제목, 상담 내용을 입력해주세요.');
       return;
     }
 
@@ -52,23 +51,22 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
         id: `pdf-${Date.now()}`,
         title: fileName,
         fileName: fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`,
-        fileSize: '1.5 MB',
+        fileSize: '1.6 MB',
         uploadedAt: today,
-        previewText: `${content.substring(0, 150)}... (첨삭 메모 포함)`
+        previewSnippet: `${content.substring(0, 120)}... (첨삭 메모 포함)`
       };
     }
 
     const newRecord: CounselingRecord = {
       id: `rec-${Date.now()}`,
       studentId: selectedStudentId,
-      date: today, // 자동 입력
+      date: today, // 오늘 날짜 자동 입력
       title: title.trim(),
       content: content.trim(),
       pdf
     };
 
     onSaveRecord(selectedStudentId, newRecord);
-    // 폼 초기화 및 닫기
     setTitle('');
     setContent('');
     setHasPdf(false);
@@ -76,20 +74,24 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
     onClose();
   };
 
+  const currentStudent = students.find(s => s.id === selectedStudentId);
+
   return (
     <div 
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-sky-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-5 py-4 border-b border-sky-100 flex items-center justify-between bg-gradient-to-r from-sky-50/70 to-teal-50/50">
           <div>
-            <h3 className="text-base font-bold text-slate-900">상담·첨삭 기록 등록</h3>
-            <p className="text-xs text-slate-500">오늘 날짜로 자동 등록됩니다.</p>
+            <h3 className="text-base font-bold text-slate-900">상담·첨삭 기록 추가</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {currentStudent ? `${currentStudent.name} (${currentStudent.cohort}) 열에 새 카드가 등록됩니다.` : '오늘 날짜로 자동 등록됩니다.'}
+            </p>
           </div>
           <button 
             onClick={onClose} 
@@ -99,18 +101,18 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           </button>
         </div>
 
-        {/* Simplified Form */}
+        {/* Form: 딱 4가지 항목 */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           
           {/* 1. Student Selection */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
-              학생 선택 <span className="text-rose-500">*</span>
+              학생 열 선택 <span className="text-teal-600">*</span>
             </label>
             <select
               value={selectedStudentId}
               onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-teal-500 focus:bg-white"
               required
             >
               {students.map((s) => (
@@ -124,52 +126,51 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
           {/* 2. Title */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
-              제목 <span className="text-rose-500">*</span>
+              제목 <span className="text-teal-600">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="예: 현대해상 자기소개서 첨삭"
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-teal-500 focus:bg-white"
               required
+              autoFocus
             />
           </div>
 
           {/* 3. Content */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
-              상담·첨삭 내용 <span className="text-rose-500">*</span>
+              상담·첨삭 내용 <span className="text-teal-600">*</span>
             </label>
             <textarea
-              rows={6}
+              rows={5}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="상담 결과, 피드백 코멘트, 개선 방향 등을 자유롭게 작성하세요."
-              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 text-xs focus:ring-2 focus:ring-blue-500 focus:bg-white leading-relaxed"
+              placeholder="상담 피드백 및 첨삭 내용을 자유롭게 작성하세요."
+              className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-teal-500 focus:bg-white leading-relaxed"
               required
             />
           </div>
 
           {/* 4. PDF Attachment (Optional) */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasPdf}
-                  onChange={(e) => setHasPdf(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                />
-                <span className="font-semibold text-slate-700 flex items-center">
-                  <FileText className="w-4 h-4 mr-1 text-rose-500" />
-                  PDF 첨삭지 첨부
-                </span>
-              </label>
-            </div>
+          <div className="bg-sky-50/60 p-3 rounded-xl border border-sky-100">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={hasPdf}
+                onChange={(e) => setHasPdf(e.target.checked)}
+                className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
+              />
+              <span className="font-semibold text-slate-700 flex items-center">
+                <FileText className="w-4 h-4 mr-1 text-teal-600" />
+                PDF 첫 페이지 썸네일 첨부
+              </span>
+            </label>
 
             {hasPdf && (
-              <div className="mt-2.5 pt-2.5 border-t border-slate-200">
+              <div className="mt-2.5 pt-2.5 border-t border-sky-200/60">
                 <input
                   type="text"
                   value={pdfFileName}
@@ -186,15 +187,16 @@ export const AddRecordModal: React.FC<AddRecordModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+              className="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 font-medium"
             >
               취소
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs transition-colors"
+              className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold shadow-xs transition-colors flex items-center space-x-1"
             >
-              등록하기
+              <Check className="w-3.5 h-3.5" />
+              <span>카드 등록</span>
             </button>
           </div>
 

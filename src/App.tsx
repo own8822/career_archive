@@ -1,38 +1,36 @@
 import React, { useState, useMemo } from 'react';
 import { Header } from './components/Header';
-import { StudentSimpleCard } from './components/StudentSimpleCard';
-import { StudentDetailModal } from './components/StudentDetailModal';
+import { PadletColumn } from './components/PadletColumn';
 import { AddRecordModal } from './components/AddRecordModal';
 import { AddStudentModal } from './components/AddStudentModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
 import { INITIAL_STUDENTS } from './data/mockData';
 import { Student, CounselingRecord, PdfAttachment } from './types';
-import { Search, X, Users } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
-  const { logAction } = useAuth();
+  const { isAdmin, logAction } = useAuth();
 
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
 
   // Modals
-  const [detailStudentId, setDetailStudentId] = useState<string | null>(null);
   const [isAddRecordOpen, setIsAddRecordOpen] = useState(false);
-  const [recordTargetStudent, setRecordTargetStudent] = useState<Student | null>(null);
+  const [targetStudentForRecord, setTargetStudentForRecord] = useState<Student | null>(null);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState<{ pdf: PdfAttachment; studentName: string } | null>(null);
 
   // Available cohorts list
-  const cohorts = useMemo(() => {
-    const list = Array.from(new Set(students.map(s => s.cohort)));
-    return list.sort();
+  const availableCohorts = useMemo(() => {
+    const set = new Set(students.map((s) => s.cohort));
+    return Array.from(set).sort();
   }, [students]);
 
-  // Filtered Students (학생 이름 및 기수로 검색)
+  // Filtered Students (학생 이름 및 기수 필터)
   const filteredStudents = useMemo(() => {
-    return students.filter(student => {
+    return students.filter((student) => {
       if (selectedCohort !== 'all' && student.cohort !== selectedCohort) {
         return false;
       }
@@ -45,164 +43,124 @@ export const AppContent: React.FC = () => {
     });
   }, [students, searchKeyword, selectedCohort]);
 
-  // Current selected student for detail modal
-  const detailStudent = useMemo(() => {
-    return students.find(s => s.id === detailStudentId) || null;
-  }, [students, detailStudentId]);
-
-  // Handler: Add record
+  // Handler: Add new record to specific student
   const handleSaveRecord = (studentId: string, newRecord: CounselingRecord) => {
-    setStudents(prev => prev.map(s => {
-      if (s.id === studentId) {
-        return {
-          ...s,
-          records: [newRecord, ...s.records]
-        };
-      }
-      return s;
-    }));
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            records: [newRecord, ...s.records],
+          };
+        }
+        return s;
+      })
+    );
     logAction('create_record', `${newRecord.title} 기록 추가`);
   };
 
   // Handler: Delete record
   const handleDeleteRecord = (studentId: string, recordId: string) => {
-    setStudents(prev => prev.map(s => {
-      if (s.id === studentId) {
-        return {
-          ...s,
-          records: s.records.filter(r => r.id !== recordId)
-        };
-      }
-      return s;
-    }));
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            records: s.records.filter((r) => r.id !== recordId),
+          };
+        }
+        return s;
+      })
+    );
     logAction('delete_record', '상담 기록 삭제');
   };
 
-  // Handler: Add new student
+  // Handler: Add new student column
   const handleAddStudent = (newStudent: Student) => {
-    setStudents(prev => [newStudent, ...prev]);
-    logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 학생 등록`);
+    setStudents((prev) => [...prev, newStudent]);
+    logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 열 추가`);
+  };
+
+  // Handler: Delete student column
+  const handleDeleteStudent = (studentId: string) => {
+    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+    logAction('delete_record', '학생 열 삭제');
+  };
+
+  // Quick open Add Record modal for specific student column
+  const handleOpenAddRecordForColumn = (student: Student) => {
+    setTargetStudentForRecord(student);
+    setIsAddRecordOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans flex flex-col">
-      {/* 1. Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-teal-50/40 text-slate-800 font-sans flex flex-col selection:bg-teal-500 selection:text-white">
+      {/* 1. Sticky Header with Search & Filter & Role Switcher */}
       <Header
-        onOpenAddRecord={() => {
-          setRecordTargetStudent(null);
-          setIsAddRecordOpen(true);
-        }}
+        searchKeyword={searchKeyword}
+        onSearchChange={setSearchKeyword}
+        selectedCohort={selectedCohort}
+        onCohortChange={setSelectedCohort}
+        availableCohorts={availableCohorts}
         onOpenAddStudent={() => setIsAddStudentOpen(true)}
       />
 
-      {/* 2. Main Container */}
-      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 flex-1 flex flex-col">
-        
-        {/* Search Bar & Quick Cohort Filter */}
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Search className="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              value={searchKeyword}
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              placeholder="학생 이름 검색"
-              className="w-full pl-10 pr-9 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-blue-500 transition-all text-slate-800 placeholder-slate-400"
-            />
-            {searchKeyword && (
-              <button
-                onClick={() => setSearchKeyword('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Minimal Cohort Filter */}
-          <div className="flex items-center space-x-1 text-xs">
-            <button
-              onClick={() => setSelectedCohort('all')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                selectedCohort === 'all'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              전체
-            </button>
-            {cohorts.map(c => (
-              <button
-                key={c}
-                onClick={() => setSelectedCohort(c)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  selectedCohort === c
-                    ? 'bg-blue-600 text-white font-semibold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 3. Students Card Grid (Padlet-style cards) */}
+      {/* 2. Main Padlet Shelf Canvas (Horizontal Scroll Lane) */}
+      <main className="flex-1 overflow-x-auto p-4 sm:p-6 flex items-start space-x-5">
         {filteredStudents.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-5 flex-1">
+          <>
             {filteredStudents.map((student) => (
-              <StudentSimpleCard
+              <PadletColumn
                 key={student.id}
                 student={student}
-                onClick={() => {
-                  setDetailStudentId(student.id);
-                  logAction('view_student', `${student.name} 학생 상세 조회`);
-                }}
+                isAdmin={isAdmin}
+                onAddRecord={handleOpenAddRecordForColumn}
+                onDeleteRecord={handleDeleteRecord}
+                onDeleteStudent={handleDeleteStudent}
+                onOpenPdf={(pdf, studentName) => setSelectedPdf({ pdf, studentName })}
               />
             ))}
-          </div>
+
+            {/* End of Columns: Add Column Tile (Admin Only) */}
+            {isAdmin && (
+              <div
+                onClick={() => setIsAddStudentOpen(true)}
+                className="w-72 shrink-0 rounded-2xl border-2 border-dashed border-sky-200 hover:border-teal-400 bg-white/40 hover:bg-white/80 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] group"
+              >
+                <div className="w-10 h-10 rounded-full bg-teal-50 group-hover:bg-teal-100 text-teal-600 flex items-center justify-center mb-2 transition-colors">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <h4 className="text-xs font-bold text-slate-700 group-hover:text-teal-700 transition-colors">
+                  새 학생 열 추가
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  클릭하여 새 학생의 세로 열을 생성합니다.
+                </p>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+          <div className="w-full flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-12 h-12 rounded-full bg-white shadow-2xs border border-sky-100 flex items-center justify-center text-teal-500 mb-3">
               <Users className="w-6 h-6" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">일치하는 학생이 없습니다</p>
-            <p className="text-xs text-slate-400 mt-1">학생 이름을 다시 확인해보세요.</p>
+            <p className="text-sm font-semibold text-slate-700">검색된 학생 열이 없습니다</p>
+            <p className="text-xs text-slate-400 mt-1">학생 이름이나 기수 필터를 다시 확인해보세요.</p>
           </div>
         )}
-
-        {/* Bottom Helper Guide Text (as shown in user specification) */}
-        <div className="mt-8 pt-4 border-t border-slate-100 text-center text-xs text-slate-400">
-          메인 보드는 학생을 찾는 용도로만 사용하고, 상세 기록은 카드를 눌렀을 때 표시하는 구성
-        </div>
-
       </main>
 
-      {/* 4. Modals */}
-      {/* Student Detail Modal */}
-      <StudentDetailModal
-        student={detailStudent}
-        onClose={() => setDetailStudentId(null)}
-        onOpenAddRecordForStudent={(student) => {
-          setRecordTargetStudent(student);
-          setIsAddRecordOpen(true);
-        }}
-        onDeleteRecord={handleDeleteRecord}
-        onOpenPdf={(pdf, studentName) => setSelectedPdf({ pdf, studentName })}
-      />
-
-      {/* Add Record Modal (Simple 4 inputs) */}
+      {/* 3. Modals */}
+      {/* Add Record Modal */}
       <AddRecordModal
         isOpen={isAddRecordOpen}
         onClose={() => setIsAddRecordOpen(false)}
         students={students}
-        preselectedStudent={recordTargetStudent}
+        preselectedStudent={targetStudentForRecord}
         onSaveRecord={handleSaveRecord}
       />
 
-      {/* Add Student Modal (Name + Cohort) */}
+      {/* Add Student Column Modal */}
       <AddStudentModal
         isOpen={isAddStudentOpen}
         onClose={() => setIsAddStudentOpen(false)}
