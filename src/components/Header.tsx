@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles } from 'lucide-react';
+import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   searchKeyword: string;
@@ -9,6 +9,7 @@ interface HeaderProps {
   onCohortChange: (cohort: string) => void;
   availableCohorts: string[];
   onOpenAddStudent: () => void;
+  onOpenCodeSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,8 +19,9 @@ export const Header: React.FC<HeaderProps> = ({
   onCohortChange,
   availableCohorts,
   onOpenAddStudent,
+  onOpenCodeSettings,
 }) => {
-  const { switchUser, isAdmin } = useAuth();
+  const { isAdmin, isViewer, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-sky-100 shadow-2xs">
@@ -98,38 +100,35 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Action: Role Toggle Pill & Add Student Button */}
+          {/* Right Action: Role Badge & Admin Code Settings & Logout */}
           <div className="flex items-center space-x-2 shrink-0">
             
-            {/* Role Toggle Pill */}
-            <div className="flex items-center bg-slate-100/90 p-0.5 rounded-lg border border-slate-200 text-xs">
-              <button
-                onClick={() => switchUser('admin')}
-                className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-medium transition-all ${
-                  isAdmin
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-                title="관리자: 학생 추가, 기록 등록/수정/삭제 가능"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-                <span>관리자</span>
-              </button>
-              <button
-                onClick={() => switchUser('viewer')}
-                className={`flex items-center space-x-1 px-2.5 py-1 rounded-md font-medium transition-all ${
-                  !isAdmin
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-                title="열람자: 조회만 가능"
-              >
-                <Eye className="w-3.5 h-3.5 text-slate-400" />
-                <span>열람자</span>
-              </button>
-            </div>
+            {/* Role Badge */}
+            {isAdmin ? (
+              <div className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                <span>관리자 모드</span>
+              </div>
+            ) : isViewer ? (
+              <div className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold">
+                <Eye className="w-3.5 h-3.5 text-teal-600" />
+                <span>열람자 (읽기 전용)</span>
+              </div>
+            ) : null}
 
-            {/* Admin Add Student Button */}
+            {/* Admin: Code Settings Button */}
+            {isAdmin && (
+              <button
+                onClick={onOpenCodeSettings}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-all shadow-2xs"
+                title="관리자 및 열람자 접속 코드 변경"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden sm:inline">코드 관리</span>
+              </button>
+            )}
+
+            {/* Admin: Add Student Button */}
             {isAdmin && (
               <button
                 onClick={onOpenAddStudent}
@@ -140,6 +139,15 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>학생 추가</span>
               </button>
             )}
+
+            {/* Logout Button */}
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="로그아웃 (접속 코드 재입력)"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
 
           </div>
 

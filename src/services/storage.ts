@@ -1,14 +1,16 @@
-import { Student, CounselingRecord } from '../types';
+import { Student, CounselingRecord, AuthSettings } from '../types';
 import { INITIAL_STUDENTS } from '../data/mockData';
 
 const DB_NAME = 'CareerArchiveDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'students';
+const AUTH_SETTINGS_KEY = 'career_archive_auth_settings';
 
-/**
- * IndexedDB Wrapper for permanent client-side storage of students, records, and PDF files.
- * Easily swappable with Company-approved cloud databases (e.g. Supabase, Firebase, AWS S3+RDS).
- */
+export const DEFAULT_AUTH_SETTINGS: AuthSettings = {
+  adminCode: 'admin1234',
+  viewerCode: 'viewer1234',
+};
+
 class LocalArchiveStorage {
   private dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -35,6 +37,25 @@ class LocalArchiveStorage {
     });
 
     return this.dbPromise;
+  }
+
+  /**
+   * Auth Settings (Admin Code & Viewer Code)
+   */
+  getAuthSettings(): AuthSettings {
+    try {
+      const raw = localStorage.getItem(AUTH_SETTINGS_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('Failed to parse auth settings, using defaults', e);
+    }
+    return DEFAULT_AUTH_SETTINGS;
+  }
+
+  saveAuthSettings(settings: AuthSettings): void {
+    localStorage.setItem(AUTH_SETTINGS_KEY, JSON.stringify(settings));
   }
 
   /**

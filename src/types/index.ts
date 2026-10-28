@@ -1,10 +1,8 @@
-export type UserRole = 'admin' | 'viewer';
+export type UserRole = 'admin' | 'viewer' | null;
 
-export interface User {
-  id: string;
-  name: string;
-  role: UserRole;
-  email: string;
+export interface AuthSettings {
+  adminCode: string;
+  viewerCode: string;
 }
 
 export interface PdfAttachment {

@@ -4,6 +4,8 @@ import { PadletColumn } from './components/PadletColumn';
 import { RecordModal } from './components/RecordModal';
 import { AddStudentModal } from './components/AddStudentModal';
 import { EditStudentModal } from './components/EditStudentModal';
+import { CodeSettingsModal } from './components/CodeSettingsModal';
+import { LoginModal } from './components/LoginModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
 import { archiveStorage } from './services/storage';
@@ -11,7 +13,7 @@ import { Student, CounselingRecord, PdfAttachment } from './types';
 import { Plus, Users, Database } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
-  const { isAdmin, logAction } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,6 +28,7 @@ export const AppContent: React.FC = () => {
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
+  const [isCodeSettingsOpen, setIsCodeSettingsOpen] = useState(false);
 
   const [selectedPdf, setSelectedPdf] = useState<{ pdf: PdfAttachment; studentName: string } | null>(null);
 
@@ -85,7 +88,6 @@ export const AppContent: React.FC = () => {
             return s;
           })
         );
-        logAction('update_record', `${record.title} 기록 수정 완료`);
       } else {
         await archiveStorage.addRecord(studentId, record);
         setStudents((prev) =>
@@ -99,7 +101,6 @@ export const AppContent: React.FC = () => {
             return s;
           })
         );
-        logAction('create_record', `${record.title} 기록 영구 등록 완료`);
       }
     } catch (err) {
       console.error('Failed to save record to storage:', err);
@@ -122,7 +123,6 @@ export const AppContent: React.FC = () => {
           return s;
         })
       );
-      logAction('delete_record', '상담 기록 삭제 완료');
     } catch (err) {
       console.error('Failed to delete record from storage:', err);
       alert('기록 삭제 중 오류가 발생했습니다.');
@@ -134,7 +134,6 @@ export const AppContent: React.FC = () => {
     try {
       await archiveStorage.addStudent(newStudent);
       setStudents((prev) => [...prev, newStudent]);
-      logAction('create_student', `${newStudent.name} (${newStudent.cohort}) 영구 등록`);
     } catch (err) {
       console.error('Failed to add student to storage:', err);
       alert('학생 등록 중 오류가 발생했습니다.');
@@ -148,7 +147,6 @@ export const AppContent: React.FC = () => {
       setStudents((prev) =>
         prev.map((s) => (s.id === studentId ? { ...s, name, cohort } : s))
       );
-      logAction('update_student', `${name} (${cohort}) 정보 수정 완료`);
     } catch (err) {
       console.error('Failed to update student in storage:', err);
       alert('학생 정보 수정 중 오류가 발생했습니다.');
@@ -160,7 +158,6 @@ export const AppContent: React.FC = () => {
     try {
       await archiveStorage.deleteStudent(studentId);
       setStudents((prev) => prev.filter((s) => s.id !== studentId));
-      logAction('delete_student', '학생 영구 삭제 완료');
     } catch (err) {
       console.error('Failed to delete student from storage:', err);
       alert('학생 삭제 중 오류가 발생했습니다.');
@@ -206,6 +203,7 @@ export const AppContent: React.FC = () => {
         onCohortChange={setSelectedCohort}
         availableCohorts={availableCohorts}
         onOpenAddStudent={() => setIsAddStudentOpen(true)}
+        onOpenCodeSettings={() => setIsCodeSettingsOpen(true)}
       />
 
       {/* 2. Main Masonry Container (Pinterest-style Multi-column) */}
@@ -216,11 +214,11 @@ export const AppContent: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span>
             <span>
-              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지도 박스 (새로고침 후에도 자동 보존)
+              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지도 박스
             </span>
           </div>
           <span className="text-[11px] text-teal-700 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-full font-medium">
-            🔒 로컬 비공개 영구 저장소 활성화됨 (GitHub 공개 방지)
+            {isAdmin ? '🛡️ 관리자 권한 (전체 편집 가능)' : '👁️ 열람자 권한 (조회 및 다운로드 전용)'}
           </span>
         </div>
 
@@ -271,6 +269,15 @@ export const AppContent: React.FC = () => {
       </main>
 
       {/* 3. Modals */}
+      {/* Login Modal: Triggered when not authenticated */}
+      {!isAuthenticated && <LoginModal />}
+
+      {/* Code Settings Modal (Admin Only) */}
+      <CodeSettingsModal
+        isOpen={isCodeSettingsOpen}
+        onClose={() => setIsCodeSettingsOpen(false)}
+      />
+
       {/* Create / Edit Record Modal */}
       <RecordModal
         isOpen={isRecordModalOpen}

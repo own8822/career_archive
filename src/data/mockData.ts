@@ -1,20 +1,5 @@
-import { Student, User } from '../types';
+import { Student } from '../types';
 import { generateMockThumbnailUrl } from '../utils/pdfThumbnail';
-
-export const INITIAL_USERS: User[] = [
-  {
-    id: 'u-admin',
-    name: '관리자',
-    role: 'admin',
-    email: 'admin@career.archive',
-  },
-  {
-    id: 'u-viewer',
-    name: '열람자',
-    role: 'viewer',
-    email: 'viewer@career.archive',
-  }
-];
 
 export const INITIAL_STUDENTS: Student[] = [
   {
