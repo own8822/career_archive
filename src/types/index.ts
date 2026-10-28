@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'viewer' | null;
 
 export interface AuthSettings {
   adminCode: string;
-  viewerCode: string;
+  viewerCodes: string[]; // viewer01 ~ viewer10
 }
 
 export interface PdfAttachment {

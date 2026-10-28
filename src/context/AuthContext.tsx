@@ -12,7 +12,7 @@ interface AuthContextType {
   authSettings: AuthSettings;
   login: (code: string) => { success: boolean; role?: UserRole; message?: string };
   logout: () => void;
-  updateAuthCodes: (adminCode: string, viewerCode: string) => void;
+  updateAuthCodes: (adminCode: string, viewerCodes: string[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,13 +39,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: false, message: '접속 코드를 입력해주세요.' };
     }
 
+    // 1. Check Admin Code
     if (trimmed === authSettings.adminCode) {
       setCurrentRole('admin');
       sessionStorage.setItem(SESSION_ROLE_KEY, 'admin');
       return { success: true, role: 'admin' };
     }
 
-    if (trimmed === authSettings.viewerCode) {
+    // 2. Check 10 Viewer Codes
+    if (authSettings.viewerCodes.includes(trimmed)) {
       setCurrentRole('viewer');
       sessionStorage.setItem(SESSION_ROLE_KEY, 'viewer');
       return { success: true, role: 'viewer' };
@@ -53,7 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return {
       success: false,
-      message: '일치하는 접속 코드가 없습니다. 코드를 다시 확인해주세요.'
+      message: '접속 코드가 올바르지 않습니다.'
     };
   };
 
@@ -62,10 +64,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     sessionStorage.removeItem(SESSION_ROLE_KEY);
   };
 
-  const updateAuthCodes = (newAdminCode: string, newViewerCode: string) => {
+  const updateAuthCodes = (newAdminCode: string, newViewerCodes: string[]) => {
     const updated: AuthSettings = {
       adminCode: newAdminCode.trim(),
-      viewerCode: newViewerCode.trim()
+      viewerCodes: newViewerCodes.map(c => c.trim()).filter(c => c.length > 0)
     };
     archiveStorage.saveAuthSettings(updated);
     setAuthSettings(updated);

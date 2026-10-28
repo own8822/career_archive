@@ -4,11 +4,22 @@ import { INITIAL_STUDENTS } from '../data/mockData';
 const DB_NAME = 'CareerArchiveDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'students';
-const AUTH_SETTINGS_KEY = 'career_archive_auth_settings';
+const AUTH_SETTINGS_KEY = 'career_archive_auth_settings_v2'; // versioned key to override old presets
 
 export const DEFAULT_AUTH_SETTINGS: AuthSettings = {
-  adminCode: 'admin1234',
-  viewerCode: 'viewer1234',
+  adminCode: 'admin123123',
+  viewerCodes: [
+    'viewer01',
+    'viewer02',
+    'viewer03',
+    'viewer04',
+    'viewer05',
+    'viewer06',
+    'viewer07',
+    'viewer08',
+    'viewer09',
+    'viewer10',
+  ],
 };
 
 class LocalArchiveStorage {
@@ -40,17 +51,21 @@ class LocalArchiveStorage {
   }
 
   /**
-   * Auth Settings (Admin Code & Viewer Code)
+   * Auth Settings (Admin Code & 10 Viewer Codes)
    */
   getAuthSettings(): AuthSettings {
     try {
       const raw = localStorage.getItem(AUTH_SETTINGS_KEY);
       if (raw) {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (parsed.adminCode && Array.isArray(parsed.viewerCodes) && parsed.viewerCodes.length > 0) {
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Failed to parse auth settings, using defaults', e);
     }
+    this.saveAuthSettings(DEFAULT_AUTH_SETTINGS);
     return DEFAULT_AUTH_SETTINGS;
   }
 
