@@ -30,6 +30,17 @@ export interface Student {
   cohort: string; // e.g. "디금융 1기", "디금융 8기"
   records: CounselingRecord[];
   createdAt: string;
+
+  // 구글 시트 / 엑셀 명부 연동 인적사항
+  orderNo?: string | number; // 연번
+  birthYear?: string;        // 생년
+  phone?: string;            // 휴대폰
+  email?: string;            // 이메일
+  university?: string;       // 학교
+  major1?: string;           // 학과1 (주전공)
+  major2?: string;           // 학과2 (복수/부전공)
+  memo?: string;             // 비고 / 메모
+  extra?: Record<string, any>;
 }
 
 export const PRESET_COHORTS = [

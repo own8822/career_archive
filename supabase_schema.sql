@@ -8,6 +8,14 @@ CREATE TABLE IF NOT EXISTS public.students (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     cohort TEXT NOT NULL,
+    order_no TEXT,
+    birth_year TEXT,
+    phone TEXT,
+    email TEXT,
+    university TEXT,
+    major1 TEXT,
+    major2 TEXT,
+    memo TEXT,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, Upload, CloudUpload, Check, AlertCircle, Database, FileJson } from 'lucide-react';
+import { X, Download, Upload, CloudUpload, Check, AlertCircle, Database, FileJson, FileSpreadsheet } from 'lucide-react';
 import { archiveStorage } from '../services/storage';
 import { isSupabaseConfigured } from '../services/supabase';
 import { Student } from '../types';
@@ -8,12 +8,14 @@ interface DataManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDataRestored: (students: Student[]) => void;
+  onOpenSheetImport?: () => void;
 }
 
 export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   isOpen,
   onClose,
   onDataRestored,
+  onOpenSheetImport,
 }) => {
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -136,7 +138,35 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
             </div>
           )}
 
-          {/* 1. Export to Local JSON File */}
+          {/* 1. Google Sheets / Excel Import */}
+          {onOpenSheetImport && (
+            <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200/90 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-emerald-900 flex items-center space-x-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>구글 시트 / 엑셀 데이터 가져오기</span>
+                  </h4>
+                  <p className="text-[11px] text-emerald-800 mt-0.5">
+                    기수, 연번, 성명, 생년, 휴대폰, 메일, 학교, 학과 등의 스프레드시트 명부를 복사-붙여넣기나 파일로 즉시 일괄 등록합니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenSheetImport();
+                  }}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-2xs transition-colors flex items-center space-x-1 shrink-0 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>시트 가져오기</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Export to Local JSON File */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
               <div>

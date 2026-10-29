@@ -6,6 +6,7 @@ import { AddStudentModal } from './components/AddStudentModal';
 import { EditStudentModal } from './components/EditStudentModal';
 import { CodeSettingsModal } from './components/CodeSettingsModal';
 import { DataManagementModal } from './components/DataManagementModal';
+import { SheetImportModal } from './components/SheetImportModal';
 import { LoginModal } from './components/LoginModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
@@ -32,6 +33,7 @@ export const AppContent: React.FC = () => {
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
   const [isCodeSettingsOpen, setIsCodeSettingsOpen] = useState(false);
   const [isDataManagementOpen, setIsDataManagementOpen] = useState(false);
+  const [isSheetImportOpen, setIsSheetImportOpen] = useState(false);
 
   const [selectedPdf, setSelectedPdf] = useState<{ pdf: PdfAttachment; studentName: string } | null>(null);
 
@@ -172,11 +174,11 @@ export const AppContent: React.FC = () => {
   };
 
   // Handler: Update student
-  const handleSaveStudent = async (studentId: string, name: string, cohort: string) => {
+  const handleSaveStudent = async (updatedStudent: Student) => {
     try {
-      await archiveStorage.updateStudent(studentId, name, cohort);
+      await archiveStorage.updateStudent(updatedStudent.id, updatedStudent);
       setStudents((prev) =>
-        prev.map((s) => (s.id === studentId ? { ...s, name, cohort } : s))
+        prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
       );
     } catch (err) {
       console.error('Failed to update student in storage:', err);
@@ -240,6 +242,7 @@ export const AppContent: React.FC = () => {
         availableCohorts={availableCohorts}
         cohortCounts={cohortCounts}
         onOpenAddStudent={() => setIsAddStudentOpen(true)}
+        onOpenSheetImport={() => setIsSheetImportOpen(true)}
         onOpenCodeSettings={() => setIsCodeSettingsOpen(true)}
         onOpenDataManagement={() => setIsDataManagementOpen(true)}
       />
@@ -374,6 +377,16 @@ export const AppContent: React.FC = () => {
         isOpen={isDataManagementOpen}
         onClose={() => setIsDataManagementOpen(false)}
         onDataRestored={(restoredStudents) => setStudents(restoredStudents)}
+        onOpenSheetImport={() => setIsSheetImportOpen(true)}
+      />
+
+      {/* Google Sheet / Excel Bulk Import Modal */}
+      <SheetImportModal
+        isOpen={isSheetImportOpen}
+        onClose={() => setIsSheetImportOpen(false)}
+        existingStudents={students}
+        onImportComplete={(updatedStudents) => setStudents(updatedStudents)}
+        defaultCohort={selectedCohort !== 'all' ? selectedCohort : '디금융 8기'}
       />
 
       {/* Code Settings Modal */}

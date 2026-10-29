@@ -157,6 +157,14 @@ class LocalArchiveStorage {
               name: s.name,
               cohort: s.cohort,
               createdAt: s.created_at,
+              orderNo: s.order_no ?? s.orderNo,
+              birthYear: s.birth_year ?? s.birthYear,
+              phone: s.phone,
+              email: s.email,
+              university: s.university,
+              major1: s.major1,
+              major2: s.major2,
+              memo: s.memo,
               records: studentRecords,
             };
           });
@@ -249,12 +257,33 @@ class LocalArchiveStorage {
     });
   }
 
-  async updateStudent(studentId: string, name: string, cohort: string): Promise<void> {
+  async updateStudent(
+    studentId: string,
+    updates: Partial<Omit<Student, 'id' | 'records' | 'createdAt'>> | string,
+    legacyCohort?: string
+  ): Promise<void> {
+    const updateObj: Partial<Student> =
+      typeof updates === 'string'
+        ? { name: updates, cohort: legacyCohort }
+        : updates;
+
     if (isSupabaseConfigured() && supabase) {
       try {
+        const payload: Record<string, any> = {};
+        if (updateObj.name !== undefined) payload.name = updateObj.name;
+        if (updateObj.cohort !== undefined) payload.cohort = updateObj.cohort;
+        if (updateObj.phone !== undefined) payload.phone = updateObj.phone;
+        if (updateObj.email !== undefined) payload.email = updateObj.email;
+        if (updateObj.university !== undefined) payload.university = updateObj.university;
+        if (updateObj.major1 !== undefined) payload.major1 = updateObj.major1;
+        if (updateObj.major2 !== undefined) payload.major2 = updateObj.major2;
+        if (updateObj.birthYear !== undefined) payload.birth_year = updateObj.birthYear;
+        if (updateObj.orderNo !== undefined) payload.order_no = updateObj.orderNo;
+        if (updateObj.memo !== undefined) payload.memo = updateObj.memo;
+
         await supabase
           .from('students')
-          .update({ name, cohort })
+          .update(payload)
           .eq('id', studentId);
       } catch (e) {
         console.error('Supabase updateStudent failed:', e);
@@ -270,8 +299,7 @@ class LocalArchiveStorage {
       getReq.onsuccess = () => {
         const student = getReq.result as Student | undefined;
         if (student) {
-          student.name = name;
-          student.cohort = cohort;
+          Object.assign(student, updateObj);
           store.put(student);
           resolve();
         } else {
@@ -279,6 +307,19 @@ class LocalArchiveStorage {
         }
       };
       getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  async saveStudentsBatch(students: Student[]): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      for (const s of students) {
+        store.put(s);
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
   }
 

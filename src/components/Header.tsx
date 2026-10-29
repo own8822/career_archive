@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut, Database, Layers } from 'lucide-react';
+import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut, Database, Layers, FileSpreadsheet } from 'lucide-react';
 
 interface HeaderProps {
   searchKeyword: string;
@@ -9,6 +9,7 @@ interface HeaderProps {
   onCohortChange: (cohort: string) => void;
   availableCohorts: string[];
   onOpenAddStudent: () => void;
+  onOpenSheetImport: () => void;
   onOpenCodeSettings: () => void;
   onOpenDataManagement: () => void;
   cohortCounts?: Record<string, number>;
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCohortChange,
   availableCohorts,
   onOpenAddStudent,
+  onOpenSheetImport,
   onOpenCodeSettings,
   onOpenDataManagement,
   cohortCounts = {},
@@ -91,6 +93,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>열람자</span>
               </div>
             ) : null}
+
+            {/* Admin: Google Sheet / Excel Import Button */}
+            {isAdmin && (
+              <button
+                onClick={onOpenSheetImport}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-800 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                title="구글 시트 또는 엑셀의 학생 명부 일괄 가져오기"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="hidden sm:inline">시트 가져오기</span>
+              </button>
+            )}
 
             {/* Admin: Data Management Button */}
             {isAdmin && (
