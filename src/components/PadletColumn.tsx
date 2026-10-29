@@ -33,7 +33,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
 
   return (
     <div
-      className={`break-inside-avoid mb-5 w-full rounded-2xl transition-all ${
+      className={`w-full rounded-2xl transition-all ${
         isDropped
           ? 'bg-slate-100/95 backdrop-blur-md border border-slate-300 shadow-2xs hover:shadow-xs hover:border-slate-400'
           : 'bg-white/80 backdrop-blur-md border border-sky-100/90 shadow-2xs hover:shadow-xs hover:border-teal-300'

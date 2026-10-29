@@ -86,9 +86,9 @@ export const AppContent: React.FC = () => {
     return counts;
   }, [students]);
 
-  // Filtered Students (학생 이름 및 기수 필터)
+  // Filtered & Sorted Students (연번 1, 2, 3... 기준 가로정렬 순서)
   const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
+    const list = students.filter((student) => {
       if (selectedCohort !== 'all' && student.cohort !== selectedCohort) {
         return false;
       }
@@ -98,6 +98,20 @@ export const AppContent: React.FC = () => {
         student.name.toLowerCase().includes(q) ||
         student.cohort.toLowerCase().includes(q)
       );
+    });
+
+    // 연번 기준 오름차순 정렬 (연번이 없는 경우 이름 순)
+    return list.sort((a, b) => {
+      const numA = a.orderNo !== undefined && a.orderNo !== '' ? Number(a.orderNo) : Infinity;
+      const numB = b.orderNo !== undefined && b.orderNo !== '' ? Number(b.orderNo) : Infinity;
+
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        return numA - numB;
+      }
+      if (a.orderNo && b.orderNo && a.orderNo !== b.orderNo) {
+        return String(a.orderNo).localeCompare(String(b.orderNo), undefined, { numeric: true });
+      }
+      return a.name.localeCompare(b.name);
     });
   }, [students, searchKeyword, selectedCohort]);
 
@@ -306,8 +320,8 @@ export const AppContent: React.FC = () => {
             )}
           </div>
         ) : filteredStudents.length > 0 ? (
-          /* Responsive Masonry Multi-column: 1 col on mobile -> 2 on sm -> 3 on lg -> 4 on xl */
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5 [column-fill:_balance]">
+          /* Horizontal row-by-row Grid (left-to-right order): 1 col on mobile -> 2 on sm -> 3 on lg -> 4 on xl */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
             {filteredStudents.map((student) => (
               <PadletColumn
                 key={student.id}
@@ -322,11 +336,11 @@ export const AppContent: React.FC = () => {
               />
             ))}
 
-            {/* Quick Add Student Tile in Masonry Stream (Admin Only) */}
+            {/* Quick Add Student Tile in Grid (Admin Only) */}
             {isAdmin && (
               <div
                 onClick={() => setIsAddStudentOpen(true)}
-                className="break-inside-avoid mb-5 w-full rounded-2xl border-2 border-dashed border-sky-200 hover:border-teal-400 bg-white/50 hover:bg-white/80 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] group shadow-2xs hover:shadow-xs"
+                className="w-full rounded-2xl border-2 border-dashed border-sky-200 hover:border-teal-400 bg-white/50 hover:bg-white/80 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] group shadow-2xs hover:shadow-xs"
               >
                 <div className="w-10 h-10 rounded-full bg-teal-50 group-hover:bg-teal-100 text-teal-600 flex items-center justify-center mb-2 transition-colors">
                   <Plus className="w-5 h-5" />
