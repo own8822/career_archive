@@ -69,7 +69,6 @@ class LocalArchiveStorage {
       }
     }
 
-    // Local fallback
     try {
       const raw = localStorage.getItem(AUTH_SETTINGS_KEY);
       if (raw) {
@@ -108,7 +107,6 @@ class LocalArchiveStorage {
   // Students & Records
   // ==========================================
   async getAllStudents(): Promise<Student[]> {
-    // 1. Try Supabase if configured
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data: studentsData, error: sError } = await supabase
@@ -126,8 +124,13 @@ class LocalArchiveStorage {
 
           if (rError) throw rError;
 
-          // If Supabase is completely empty, optionally seed with mock
           if (studentsData.length === 0) {
+            // Check if local has data to migrate
+            const localStudents = await this.getLocalStudentsOnly();
+            if (localStudents.length > 0) {
+              await this.seedSupabase(localStudents);
+              return localStudents;
+            }
             await this.seedSupabase(INITIAL_STUDENTS);
             return INITIAL_STUDENTS;
           }
@@ -160,7 +163,11 @@ class LocalArchiveStorage {
       }
     }
 
-    // 2. Local IndexedDB fallback
+    // Local IndexedDB fallback
+    return this.getLocalStudentsOnly();
+  }
+
+  async getLocalStudentsOnly(): Promise<Student[]> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
@@ -181,17 +188,17 @@ class LocalArchiveStorage {
     });
   }
 
-  private async seedSupabase(students: Student[]): Promise<void> {
+  async seedSupabase(students: Student[]): Promise<void> {
     if (!supabase) return;
     for (const s of students) {
-      await supabase.from('students').insert({
+      await supabase.from('students').upsert({
         id: s.id,
         name: s.name,
         cohort: s.cohort,
-        created_at: new Date().toISOString(),
+        created_at: s.createdAt || new Date().toISOString(),
       });
       for (const r of s.records) {
-        await supabase.from('records').insert({
+        await supabase.from('records').upsert({
           id: r.id,
           student_id: s.id,
           date: r.date,
@@ -204,7 +211,7 @@ class LocalArchiveStorage {
     }
   }
 
-  private async saveAllStudentsLocal(students: Student[]): Promise<void> {
+  async saveAllStudentsLocal(students: Student[]): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -219,22 +226,19 @@ class LocalArchiveStorage {
   }
 
   async addStudent(student: Student): Promise<void> {
-    // Supabase
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { error } = await supabase.from('students').insert({
+        await supabase.from('students').insert({
           id: student.id,
           name: student.name,
           cohort: student.cohort,
           created_at: new Date().toISOString(),
         });
-        if (error) console.error('Supabase addStudent error:', error);
       } catch (e) {
         console.error('Supabase addStudent failed:', e);
       }
     }
 
-    // Always update local IndexedDB too
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -248,11 +252,10 @@ class LocalArchiveStorage {
   async updateStudent(studentId: string, name: string, cohort: string): Promise<void> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { error } = await supabase
+        await supabase
           .from('students')
           .update({ name, cohort })
           .eq('id', studentId);
-        if (error) console.error('Supabase updateStudent error:', error);
       } catch (e) {
         console.error('Supabase updateStudent failed:', e);
       }
@@ -282,10 +285,9 @@ class LocalArchiveStorage {
   async deleteStudent(studentId: string): Promise<void> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { error } = await supabase.from('students').delete().eq('id', studentId);
-        if (error) console.error('Supabase deleteStudent error:', error);
+        await supabase.from('students').delete().eq('id', studentId);
       } catch (e) {
-        console.error('Supabase deleteStudent failed:', e);
+        console.error('Supabase deleteStudent error:', e);
       }
     }
 
@@ -302,7 +304,7 @@ class LocalArchiveStorage {
   async addRecord(studentId: string, record: CounselingRecord): Promise<void> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { error } = await supabase.from('records').insert({
+        await supabase.from('records').insert({
           id: record.id,
           student_id: studentId,
           date: record.date,
@@ -311,7 +313,6 @@ class LocalArchiveStorage {
           pdfs: record.pdfs || [],
           created_at: new Date().toISOString(),
         });
-        if (error) console.error('Supabase addRecord error:', error);
       } catch (e) {
         console.error('Supabase addRecord failed:', e);
       }
@@ -340,7 +341,7 @@ class LocalArchiveStorage {
   async updateRecord(studentId: string, updatedRecord: CounselingRecord): Promise<void> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { error } = await supabase
+        await supabase
           .from('records')
           .update({
             date: updatedRecord.date,
@@ -349,7 +350,6 @@ class LocalArchiveStorage {
             pdfs: updatedRecord.pdfs || [],
           })
           .eq('id', updatedRecord.id);
-        if (error) console.error('Supabase updateRecord error:', error);
       } catch (e) {
         console.error('Supabase updateRecord failed:', e);
       }
@@ -380,10 +380,9 @@ class LocalArchiveStorage {
   async deleteRecord(studentId: string, recordId: string): Promise<void> {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const { error } = await supabase.from('records').delete().eq('id', recordId);
-        if (error) console.error('Supabase deleteRecord error:', error);
+        await supabase.from('records').delete().eq('id', recordId);
       } catch (e) {
-        console.error('Supabase deleteRecord failed:', e);
+        console.error('Supabase deleteRecord error:', e);
       }
     }
 
@@ -405,6 +404,53 @@ class LocalArchiveStorage {
       };
       getReq.onerror = () => reject(getReq.error);
     });
+  }
+
+  // ==========================================
+  // Backup & Restore & Migration Utilities
+  // ==========================================
+  async exportBackupJson(): Promise<string> {
+    const students = await this.getLocalStudentsOnly();
+    const auth = await this.getAuthSettings();
+    const backupData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      auth,
+      students,
+    };
+    return JSON.stringify(backupData, null, 2);
+  }
+
+  async importBackupJson(jsonString: string): Promise<Student[]> {
+    const parsed = JSON.parse(jsonString);
+    if (!parsed || !Array.isArray(parsed.students)) {
+      throw new Error('올바른 백업 파일 형식이 아닙니다.');
+    }
+    await this.saveAllStudentsLocal(parsed.students);
+    if (parsed.auth) {
+      await this.saveAuthSettings(parsed.auth);
+    }
+
+    // If supabase connected, sync to supabase as well
+    if (isSupabaseConfigured() && supabase) {
+      await this.seedSupabase(parsed.students);
+      if (parsed.auth) {
+        await this.saveAuthSettings(parsed.auth);
+      }
+    }
+
+    return parsed.students;
+  }
+
+  async syncLocalToSupabase(): Promise<number> {
+    if (!isSupabaseConfigured() || !supabase) {
+      throw new Error('수파베이스가 .env에 설정되지 않았습니다.');
+    }
+    const localStudents = await this.getLocalStudentsOnly();
+    await this.seedSupabase(localStudents);
+    const auth = await this.getAuthSettings();
+    await this.saveAuthSettings(auth);
+    return localStudents.length;
   }
 }
 

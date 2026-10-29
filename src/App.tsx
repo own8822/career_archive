@@ -5,6 +5,7 @@ import { RecordModal } from './components/RecordModal';
 import { AddStudentModal } from './components/AddStudentModal';
 import { EditStudentModal } from './components/EditStudentModal';
 import { CodeSettingsModal } from './components/CodeSettingsModal';
+import { DataManagementModal } from './components/DataManagementModal';
 import { LoginModal } from './components/LoginModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
@@ -30,10 +31,11 @@ export const AppContent: React.FC = () => {
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
   const [isEditStudentOpen, setIsEditStudentOpen] = useState(false);
   const [isCodeSettingsOpen, setIsCodeSettingsOpen] = useState(false);
+  const [isDataManagementOpen, setIsDataManagementOpen] = useState(false);
 
   const [selectedPdf, setSelectedPdf] = useState<{ pdf: PdfAttachment; studentName: string } | null>(null);
 
-  // 1. Initial Load from IndexedDB permanent storage
+  // 1. Initial Load from storage
   useEffect(() => {
     const loadStoredData = async () => {
       try {
@@ -188,7 +190,7 @@ export const AppContent: React.FC = () => {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex items-center space-x-2 text-teal-600 font-semibold text-sm">
           <Database className="w-5 h-5 animate-spin" />
-          <span>영구 데이터 저장소를 불러오는 중...</span>
+          <span>저장소를 불러오는 중...</span>
         </div>
       </div>
     );
@@ -196,7 +198,7 @@ export const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/40 to-teal-50/40 text-slate-800 font-sans flex flex-col selection:bg-teal-500 selection:text-white">
-      {/* 1. Header with Search & Filter & Role Switcher */}
+      {/* 1. Header with Search & Filter & Admin Tools */}
       <Header
         searchKeyword={searchKeyword}
         onSearchChange={setSearchKeyword}
@@ -205,6 +207,7 @@ export const AppContent: React.FC = () => {
         availableCohorts={availableCohorts}
         onOpenAddStudent={() => setIsAddStudentOpen(true)}
         onOpenCodeSettings={() => setIsCodeSettingsOpen(true)}
+        onOpenDataManagement={() => setIsDataManagementOpen(true)}
       />
 
       {/* 2. Main Masonry Container (Pinterest-style Multi-column) */}
@@ -227,7 +230,7 @@ export const AppContent: React.FC = () => {
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-slate-100 text-slate-600 border-slate-200'
             }`}>
-              {isSupabaseConfigured() ? '☁️ 수파베이스 클라우드 DB 연결됨' : '💾 로컬 저장소 모드 (.env 설정 가능)'}
+              {isSupabaseConfigured() ? '☁️ 수파베이스 클라우드 연결됨' : '💾 개인 PC 로컬 저장 모드'}
             </span>
           </div>
         </div>
@@ -279,10 +282,17 @@ export const AppContent: React.FC = () => {
       </main>
 
       {/* 3. Modals */}
-      {/* Login Modal: Triggered when not authenticated */}
+      {/* Login Modal */}
       {!isAuthenticated && <LoginModal />}
 
-      {/* Code Settings Modal (Admin Only) */}
+      {/* Data Management Modal (Backup & Supabase Sync) */}
+      <DataManagementModal
+        isOpen={isDataManagementOpen}
+        onClose={() => setIsDataManagementOpen(false)}
+        onDataRestored={(restoredStudents) => setStudents(restoredStudents)}
+      />
+
+      {/* Code Settings Modal */}
       <CodeSettingsModal
         isOpen={isCodeSettingsOpen}
         onClose={() => setIsCodeSettingsOpen(false)}

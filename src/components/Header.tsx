@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut } from 'lucide-react';
+import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut, Database } from 'lucide-react';
 
 interface HeaderProps {
   searchKeyword: string;
@@ -10,6 +10,7 @@ interface HeaderProps {
   availableCohorts: string[];
   onOpenAddStudent: () => void;
   onOpenCodeSettings: () => void;
+  onOpenDataManagement: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   availableCohorts,
   onOpenAddStudent,
   onOpenCodeSettings,
+  onOpenDataManagement,
 }) => {
   const { isAdmin, isViewer, logout } = useAuth();
 
@@ -100,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Action: Role Badge & Admin Code Settings & Logout */}
+          {/* Right Action: Role Badge & Admin Tools & Logout */}
           <div className="flex items-center space-x-2 shrink-0">
             
             {/* Role Badge */}
@@ -116,12 +118,24 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             ) : null}
 
+            {/* Admin: Data Management (Backup & Supabase Sync) Button */}
+            {isAdmin && (
+              <button
+                onClick={onOpenDataManagement}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-all shadow-2xs"
+                title="데이터 백업 및 수파베이스 이관"
+              >
+                <Database className="w-3.5 h-3.5 text-teal-600" />
+                <span className="hidden sm:inline">데이터 관리</span>
+              </button>
+            )}
+
             {/* Admin: Code Settings Button */}
             {isAdmin && (
               <button
                 onClick={onOpenCodeSettings}
                 className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-all shadow-2xs"
-                title="관리자 및 열람자 접속 코드 변경"
+                title="관리자 및 열람자 접속 코드 관리"
               >
                 <KeyRound className="w-3.5 h-3.5 text-slate-500" />
                 <span className="hidden sm:inline">코드 관리</span>
