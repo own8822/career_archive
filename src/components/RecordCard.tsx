@@ -23,8 +23,17 @@ export const RecordCard: React.FC<RecordCardProps> = ({
   // 긴 내용인지 판별
   const isLong = record.content.length > 120 || record.content.split('\n').length > 3;
 
+  // 수강포기 기록인지 확인
+  const isDropRecord = `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '').includes('수강포기');
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-teal-300 transition-all overflow-hidden flex flex-col group">
+    <div
+      className={`rounded-xl border shadow-2xs hover:shadow-xs transition-all overflow-hidden flex flex-col group ${
+        isDropRecord
+          ? 'bg-slate-100/90 border-slate-300/80 hover:border-slate-400'
+          : 'bg-white border-slate-200/90 hover:border-teal-300'
+      }`}
+    >
       
       {/* 1. PDF Attachments List (First page thumbnails) */}
       {record.pdfs && record.pdfs.length > 0 && (
@@ -83,10 +92,17 @@ export const RecordCard: React.FC<RecordCardProps> = ({
         <div className="space-y-1.5">
           {/* Card Top: Date & Admin Actions (Edit + Delete) */}
           <div className="flex items-center justify-between text-[11px] text-slate-400">
-            <span className="flex items-center text-slate-400">
-              <Calendar className="w-3 h-3 mr-1" />
-              {record.date}
-            </span>
+            <div className="flex items-center space-x-2">
+              <span className="flex items-center text-slate-400">
+                <Calendar className="w-3 h-3 mr-1" />
+                {record.date}
+              </span>
+              {isDropRecord && (
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 border border-slate-300">
+                  수강포기
+                </span>
+              )}
+            </div>
 
             {isAdmin && (
               <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -24,24 +24,68 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
   onDeleteStudent,
   onOpenPdf,
 }) => {
+  // Check if student has '수강포기' anywhere in records or memo
+  const isDropped =
+    student.records.some((record) => {
+      const combined = `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '');
+      return combined.includes('수강포기');
+    }) || (student.memo || '').replace(/\s+/g, '').includes('수강포기');
+
   return (
-    <div className="break-inside-avoid mb-5 w-full rounded-2xl bg-white/80 backdrop-blur-md border border-sky-100/90 shadow-2xs hover:shadow-xs transition-shadow">
-      
+    <div
+      className={`break-inside-avoid mb-5 w-full rounded-2xl transition-all ${
+        isDropped
+          ? 'bg-slate-100/95 backdrop-blur-md border border-slate-300 shadow-2xs hover:shadow-xs hover:border-slate-400'
+          : 'bg-white/80 backdrop-blur-md border border-sky-100/90 shadow-2xs hover:shadow-xs hover:border-teal-300'
+      }`}
+    >
       {/* Column Header: Student Name + Cohort + Academic & Contact Info */}
-      <div className="p-4 pb-3 border-b border-sky-100/70 bg-gradient-to-r from-white via-sky-50/30 to-teal-50/20 rounded-t-2xl">
+      <div
+        className={`p-4 pb-3 border-b rounded-t-2xl transition-colors ${
+          isDropped
+            ? 'border-slate-300/80 bg-gradient-to-r from-slate-200/80 via-slate-100 to-slate-200/60'
+            : 'border-sky-100/70 bg-gradient-to-r from-white via-sky-50/30 to-teal-50/20'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 truncate">
             {student.orderNo && (
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1 py-0.5 rounded shrink-0">
+              <span
+                className={`text-[10px] font-mono px-1 py-0.5 rounded shrink-0 ${
+                  isDropped ? 'text-slate-500 bg-slate-200/90' : 'text-slate-400 bg-slate-100'
+                }`}
+              >
                 #{student.orderNo}
               </span>
             )}
-            <h3 className="text-base font-bold text-slate-800 truncate tracking-tight">
+            <h3
+              className={`text-base font-bold truncate tracking-tight ${
+                isDropped
+                  ? 'text-slate-600 line-through decoration-slate-400'
+                  : 'text-slate-800'
+              }`}
+            >
               {student.name}
             </h3>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80 shrink-0">
+            
+            {/* Cohort Badge */}
+            <span
+              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                isDropped
+                  ? 'bg-slate-200/90 text-slate-600 border border-slate-300'
+                  : 'bg-teal-50 text-teal-700 border border-teal-200/80'
+              }`}
+            >
               {student.cohort}
             </span>
+
+            {/* Dropped Badge (수강포기 뱃지) */}
+            {isDropped && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-300 text-slate-700 border border-slate-400/80 shrink-0 flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                <span>수강포기</span>
+              </span>
+            )}
           </div>
 
           {isAdmin && (
@@ -70,8 +114,14 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
 
         {/* Academic Info: University & Majors */}
         {(student.university || student.major1) && (
-          <div className="mt-1 text-[11px] text-slate-600 truncate flex items-center space-x-1">
-            <span className="font-semibold text-slate-700">{student.university}</span>
+          <div
+            className={`mt-1 text-[11px] truncate flex items-center space-x-1 ${
+              isDropped ? 'text-slate-500' : 'text-slate-600'
+            }`}
+          >
+            <span className={isDropped ? 'font-medium text-slate-600' : 'font-semibold text-slate-700'}>
+              {student.university}
+            </span>
             {student.major1 && <span>· {student.major1}</span>}
             {student.major2 && <span className="text-slate-400">({student.major2})</span>}
           </div>
@@ -81,14 +131,22 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         {(student.phone || student.email || student.birthYear) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
             {student.birthYear && (
-              <span className="px-1.5 py-0.5 bg-slate-100/90 rounded text-slate-600">
+              <span
+                className={`px-1.5 py-0.5 rounded ${
+                  isDropped ? 'bg-slate-200/80 text-slate-600' : 'bg-slate-100/90 text-slate-600'
+                }`}
+              >
                 {student.birthYear}년생
               </span>
             )}
             {student.phone && (
               <a
                 href={`tel:${student.phone}`}
-                className="px-1.5 py-0.5 bg-slate-100/90 hover:bg-teal-50 hover:text-teal-700 rounded text-slate-600 font-mono transition-colors"
+                className={`px-1.5 py-0.5 rounded font-mono transition-colors ${
+                  isDropped
+                    ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-600'
+                    : 'bg-slate-100/90 hover:bg-teal-50 hover:text-teal-700 text-slate-600'
+                }`}
                 title="전화 걸기"
               >
                 {student.phone}
@@ -97,7 +155,11 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
             {student.email && (
               <a
                 href={`mailto:${student.email}`}
-                className="px-1.5 py-0.5 bg-slate-100/90 hover:bg-teal-50 hover:text-teal-700 rounded text-slate-600 transition-colors truncate max-w-[140px]"
+                className={`px-1.5 py-0.5 rounded transition-colors truncate max-w-[140px] ${
+                  isDropped
+                    ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-600'
+                    : 'bg-slate-100/90 hover:bg-teal-50 hover:text-teal-700 text-slate-600'
+                }`}
                 title={student.email}
               >
                 {student.email}
@@ -112,7 +174,11 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         <div className="px-3.5 pt-3">
           <button
             onClick={() => onAddRecord(student)}
-            className="w-full py-1.5 px-3 rounded-xl border border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-teal-700 text-xs font-semibold flex items-center justify-center space-x-1 transition-all shadow-2xs active:scale-[0.99]"
+            className={`w-full py-1.5 px-3 rounded-xl border border-dashed text-xs font-semibold flex items-center justify-center space-x-1 transition-all shadow-2xs active:scale-[0.99] cursor-pointer ${
+              isDropped
+                ? 'border-slate-300 hover:border-slate-400 bg-slate-200/60 hover:bg-slate-200 text-slate-600'
+                : 'border-teal-300 hover:border-teal-500 bg-teal-50/50 hover:bg-teal-50 text-teal-700'
+            }`}
             title={`${student.name} 학생에게 새 상담·첨삭 기록 추가`}
           >
             <Plus className="w-3.5 h-3.5" />
