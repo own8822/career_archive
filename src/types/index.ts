@@ -2,7 +2,7 @@ export type UserRole = 'admin' | 'viewer' | null;
 
 export interface AuthSettings {
   adminCode: string;
-  viewerCodes: string[]; // viewer01 ~ viewer10
+  viewerCodes: string[]; // ubion0112 ~ ubion1012
 }
 
 export interface PdfAttachment {

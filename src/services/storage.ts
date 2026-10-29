@@ -5,21 +5,21 @@ import { supabase, isSupabaseConfigured } from './supabase';
 const DB_NAME = 'CareerArchiveDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'students';
-const AUTH_SETTINGS_KEY = 'career_archive_auth_settings_v2';
+const AUTH_SETTINGS_KEY = 'career_archive_auth_settings_v3';
 
 export const DEFAULT_AUTH_SETTINGS: AuthSettings = {
   adminCode: 'admin123123',
   viewerCodes: [
-    'viewer01',
-    'viewer02',
-    'viewer03',
-    'viewer04',
-    'viewer05',
-    'viewer06',
-    'viewer07',
-    'viewer08',
-    'viewer09',
-    'viewer10',
+    'ubion0112',
+    'ubion0212',
+    'ubion0312',
+    'ubion0412',
+    'ubion0512',
+    'ubion0612',
+    'ubion0712',
+    'ubion0812',
+    'ubion0912',
+    'ubion1012',
   ],
 };
 

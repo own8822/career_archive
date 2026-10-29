@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.records (
 CREATE TABLE IF NOT EXISTS public.auth_settings (
     id TEXT PRIMARY KEY DEFAULT 'global_auth',
     admin_code TEXT NOT NULL DEFAULT 'admin123123',
-    viewer_codes JSONB NOT NULL DEFAULT '["viewer01","viewer02","viewer03","viewer04","viewer05","viewer06","viewer07","viewer08","viewer09","viewer10"]'::jsonb,
+    viewer_codes JSONB NOT NULL DEFAULT '["ubion0112","ubion0212","ubion0312","ubion0412","ubion0512","ubion0612","ubion0712","ubion0812","ubion0912","ubion1012"]'::jsonb,
     updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -35,7 +35,7 @@ INSERT INTO public.auth_settings (id, admin_code, viewer_codes)
 VALUES (
     'global_auth',
     'admin123123',
-    '["viewer01","viewer02","viewer03","viewer04","viewer05","viewer06","viewer07","viewer08","viewer09","viewer10"]'::jsonb
+    '["ubion0112","ubion0212","ubion0312","ubion0412","ubion0512","ubion0612","ubion0712","ubion0812","ubion0912","ubion1012"]'::jsonb
 )
 ON CONFLICT (id) DO NOTHING;
 
