@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, ArrowRight, AlertCircle, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginModal: React.FC = () => {
@@ -19,12 +19,15 @@ export const LoginModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-teal-950 flex flex-col items-center justify-center p-4 selection:bg-teal-500 selection:text-white relative overflow-hidden">
+      {/* Background Decorative Ambient Blobs */}
+      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
       <div 
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-sky-100"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-700/20 relative z-10 animate-in fade-in zoom-in-95 duration-200"
       >
-        {/* Top Visual Banner (No password text exposed) */}
+        {/* Top Visual Banner */}
         <div className="bg-gradient-to-br from-sky-500 via-teal-500 to-emerald-400 p-6 text-white text-center relative overflow-hidden">
           <div className="relative z-10">
             <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-inner">
@@ -38,12 +41,18 @@ export const LoginModal: React.FC = () => {
           <div className="absolute -bottom-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
         </div>
 
-        {/* Clean Login Form (Zero password exposure) */}
+        {/* Clean Login Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              접속 코드
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700">
+                접속 코드 (관리자 / 열람자)
+              </label>
+              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Shield className="w-3 h-3 text-teal-600" />
+                보안 접속
+              </span>
+            </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                 <Lock className="w-4 h-4 text-teal-600" />
@@ -80,13 +89,17 @@ export const LoginModal: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 text-xs"
+            className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 text-xs cursor-pointer"
           >
             <span>입장하기</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
       </div>
+
+      <p className="text-center text-xs text-slate-400 mt-6 relative z-10 font-medium">
+        취업지원 아카이브 &copy; 인가된 사용자 전용 시스템
+      </p>
     </div>
   );
 };

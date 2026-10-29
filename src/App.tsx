@@ -35,20 +35,36 @@ export const AppContent: React.FC = () => {
 
   const [selectedPdf, setSelectedPdf] = useState<{ pdf: PdfAttachment; studentName: string } | null>(null);
 
-  // 1. Initial Load from storage
+  // 1. Initial Load from storage (Only when authenticated!)
   useEffect(() => {
+    if (!isAuthenticated) {
+      setStudents([]);
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
     const loadStoredData = async () => {
+      setIsLoading(true);
       try {
         const loadedStudents = await archiveStorage.getAllStudents();
-        setStudents(loadedStudents);
+        if (isMounted) {
+          setStudents(loadedStudents);
+        }
       } catch (err) {
         console.error('Failed to load students from permanent storage:', err);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
     loadStoredData();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
 
   // Available cohorts list
   const availableCohorts = useMemo(() => {
@@ -185,6 +201,11 @@ export const AppContent: React.FC = () => {
     setIsEditStudentOpen(true);
   };
 
+  // 비로그인 상태일 경우 메인 대시보드 및 학생 데이터를 전혀 렌더링하지 않고 전용 로그인 화면만 표시
+  if (!isAuthenticated) {
+    return <LoginModal />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -282,9 +303,6 @@ export const AppContent: React.FC = () => {
       </main>
 
       {/* 3. Modals */}
-      {/* Login Modal */}
-      {!isAuthenticated && <LoginModal />}
-
       {/* Data Management Modal (Backup & Supabase Sync) */}
       <DataManagementModal
         isOpen={isDataManagementOpen}
