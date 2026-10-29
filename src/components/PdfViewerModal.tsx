@@ -137,7 +137,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
               {/* Footer */}
               <div className="border-t border-slate-200 pt-3 text-[11px] text-slate-400 flex justify-between font-mono">
-                <span>{studentName || '학생'} 취업지도 첨삭 자료</span>
+                <span>{studentName || '학생'} 취업지원 첨삭 자료</span>
                 <span>{pdf.fileName}</span>
               </div>
             </div>

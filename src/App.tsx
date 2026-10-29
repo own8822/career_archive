@@ -214,7 +214,7 @@ export const AppContent: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span>
             <span>
-              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지도 박스
+              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지원 박스
             </span>
           </div>
           <span className="text-[11px] text-teal-700 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-full font-medium">

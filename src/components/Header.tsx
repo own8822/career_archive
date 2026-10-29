@@ -36,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-base font-bold text-slate-900 tracking-tight">
-                  취업지도 아카이브
+                  취업지원 아카이브
                 </h1>
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80">
                   메이슨리 보드

@@ -30,7 +30,7 @@ export const LoginModal: React.FC = () => {
             <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2.5 shadow-inner">
               <Lock className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-lg font-bold tracking-tight">취업지도 아카이브</h2>
+            <h2 className="text-lg font-bold tracking-tight">취업지원 아카이브</h2>
             <p className="text-xs text-sky-100 mt-0.5">
               접속 코드를 입력해주세요
             </p>
