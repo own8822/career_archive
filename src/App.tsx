@@ -11,7 +11,7 @@ import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
 import { archiveStorage } from './services/storage';
 import { isSupabaseConfigured } from './services/supabase';
-import { Student, CounselingRecord, PdfAttachment } from './types';
+import { Student, CounselingRecord, PdfAttachment, PRESET_COHORTS } from './types';
 import { Plus, Users, Database } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
@@ -66,10 +66,22 @@ export const AppContent: React.FC = () => {
     };
   }, [isAuthenticated]);
 
-  // Available cohorts list
+  // Available cohorts list (PRESET_COHORTS + any custom cohorts)
   const availableCohorts = useMemo(() => {
-    const set = new Set(students.map((s) => s.cohort));
-    return Array.from(set).sort();
+    const custom = students
+      .map((s) => s.cohort)
+      .filter((c) => !PRESET_COHORTS.includes(c));
+    const uniqueCustom = Array.from(new Set(custom)).sort();
+    return [...PRESET_COHORTS, ...uniqueCustom];
+  }, [students]);
+
+  // Cohort Counts map
+  const cohortCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    students.forEach((s) => {
+      counts[s.cohort] = (counts[s.cohort] || 0) + 1;
+    });
+    return counts;
   }, [students]);
 
   // Filtered Students (학생 이름 및 기수 필터)
@@ -226,6 +238,7 @@ export const AppContent: React.FC = () => {
         selectedCohort={selectedCohort}
         onCohortChange={setSelectedCohort}
         availableCohorts={availableCohorts}
+        cohortCounts={cohortCounts}
         onOpenAddStudent={() => setIsAddStudentOpen(true)}
         onOpenCodeSettings={() => setIsCodeSettingsOpen(true)}
         onOpenDataManagement={() => setIsDataManagementOpen(true)}
@@ -239,18 +252,29 @@ export const AppContent: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-teal-500"></span>
             <span>
-              총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지원 박스
+              {selectedCohort === 'all' ? (
+                <>
+                  총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지원 박스 (전체 기수)
+                </>
+              ) : (
+                <>
+                  <strong className="text-teal-700 font-bold">{selectedCohort}</strong> 게시판 :{' '}
+                  <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명
+                </>
+              )}
             </span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-[11px] text-teal-700 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-full font-medium">
               {isAdmin ? '🛡️ 관리자 권한 (전체 편집 가능)' : '👁️ 열람자 권한 (조회 및 다운로드 전용)'}
             </span>
-            <span className={`text-[11px] px-2.5 py-1 rounded-full font-medium border ${
-              isSupabaseConfigured()
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-slate-100 text-slate-600 border-slate-200'
-            }`}>
+            <span
+              className={`text-[11px] px-2.5 py-1 rounded-full font-medium border ${
+                isSupabaseConfigured()
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border-slate-200'
+              }`}
+            >
               {isSupabaseConfigured() ? '☁️ 수파베이스 클라우드 연결됨' : '💾 개인 PC 로컬 저장 모드'}
             </span>
           </div>
@@ -305,7 +329,7 @@ export const AppContent: React.FC = () => {
                   <Plus className="w-5 h-5" />
                 </div>
                 <h4 className="text-xs font-bold text-slate-700 group-hover:text-teal-700 transition-colors">
-                  새 학생 추가
+                  {selectedCohort !== 'all' ? `${selectedCohort} 학생 추가` : '새 학생 추가'}
                 </h4>
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   클릭하여 새 학생 박스를 보드에 생성합니다.
@@ -314,12 +338,32 @@ export const AppContent: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="w-full flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-12 h-12 rounded-full bg-white shadow-2xs border border-sky-100 flex items-center justify-center text-teal-500 mb-3">
-              <Users className="w-6 h-6" />
+          /* Filtered empty state */
+          <div className="w-full flex flex-col items-center justify-center py-20 px-4 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3 border border-teal-200/60 shadow-2xs">
+              <Users className="w-7 h-7" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">검색 결과와 일치하는 학생이 없습니다</p>
-            <p className="text-xs text-slate-400 mt-1">학생 이름이나 기수 필터를 다시 확인해보세요.</p>
+            <h3 className="text-base font-bold text-slate-800 mb-1">
+              {selectedCohort !== 'all'
+                ? `${selectedCohort}에 등록된 학생이 없습니다`
+                : '검색 결과와 일치하는 학생이 없습니다'}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-sm mb-5 leading-relaxed">
+              {selectedCohort !== 'all'
+                ? isAdmin
+                  ? `${selectedCohort}의 학생을 추가하여 상담 및 첨삭 기록을 관리해보세요.`
+                  : `${selectedCohort}에 등록된 학생이 아직 없습니다.`
+                : '학생 이름 검색어를 다시 확인해보세요.'}
+            </p>
+            {isAdmin && selectedCohort !== 'all' && (
+              <button
+                onClick={() => setIsAddStudentOpen(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{selectedCohort} 학생 등록하기</span>
+              </button>
+            )}
           </div>
         )}
       </main>
@@ -356,6 +400,7 @@ export const AppContent: React.FC = () => {
         isOpen={isAddStudentOpen}
         onClose={() => setIsAddStudentOpen(false)}
         onAddStudent={handleAddStudent}
+        defaultCohort={selectedCohort !== 'all' ? selectedCohort : '디금융 8기'}
       />
 
       {/* Edit Student Modal */}

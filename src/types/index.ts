@@ -27,7 +27,17 @@ export interface CounselingRecord {
 export interface Student {
   id: string;
   name: string;
-  cohort: string; // e.g. "7기", "8기"
+  cohort: string; // e.g. "디금융 1기", "디금융 8기"
   records: CounselingRecord[];
   createdAt: string;
 }
+
+export const PRESET_COHORTS = [
+  '디금융 1기',
+  '디금융 2기',
+  '디금융 3기',
+  '디금융 5기',
+  '디금융 7기',
+  '디금융 8기',
+  '디금융 9기',
+];
