@@ -29,8 +29,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authSettings, setAuthSettings] = useState<AuthSettings>(DEFAULT_AUTH_SETTINGS);
 
   useEffect(() => {
-    const loaded = archiveStorage.getAuthSettings();
-    setAuthSettings(loaded);
+    const loadSettings = async () => {
+      const loaded = await archiveStorage.getAuthSettings();
+      setAuthSettings(loaded);
+    };
+    loadSettings();
   }, []);
 
   const login = (code: string): { success: boolean; role?: UserRole; message?: string } => {

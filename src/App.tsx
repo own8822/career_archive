@@ -9,6 +9,7 @@ import { LoginModal } from './components/LoginModal';
 import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
 import { archiveStorage } from './services/storage';
+import { isSupabaseConfigured } from './services/supabase';
 import { Student, CounselingRecord, PdfAttachment } from './types';
 import { Plus, Users, Database } from 'lucide-react';
 
@@ -217,9 +218,18 @@ export const AppContent: React.FC = () => {
               총 <strong className="text-slate-800 font-semibold">{filteredStudents.length}</strong>명의 취업지원 박스
             </span>
           </div>
-          <span className="text-[11px] text-teal-700 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-full font-medium">
-            {isAdmin ? '🛡️ 관리자 권한 (전체 편집 가능)' : '👁️ 열람자 권한 (조회 및 다운로드 전용)'}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-[11px] text-teal-700 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-full font-medium">
+              {isAdmin ? '🛡️ 관리자 권한 (전체 편집 가능)' : '👁️ 열람자 권한 (조회 및 다운로드 전용)'}
+            </span>
+            <span className={`text-[11px] px-2.5 py-1 rounded-full font-medium border ${
+              isSupabaseConfigured()
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-slate-100 text-slate-600 border-slate-200'
+            }`}>
+              {isSupabaseConfigured() ? '☁️ 수파베이스 클라우드 DB 연결됨' : '💾 로컬 저장소 모드 (.env 설정 가능)'}
+            </span>
+          </div>
         </div>
 
         {filteredStudents.length > 0 ? (
