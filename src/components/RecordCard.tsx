@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Trash2, Edit2, Maximize2, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { CounselingRecord, PdfAttachment } from '../types';
+import { getFileBadgeInfo } from '../utils/pdfThumbnail';
 
 interface RecordCardProps {
   record: CounselingRecord;
@@ -47,22 +48,29 @@ export const RecordCard: React.FC<RecordCardProps> = ({
                 )}
               </div>
 
-              {/* PDF Info & Zoom label */}
+              {/* File Info & Zoom label */}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center space-x-1.5 mb-0.5">
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 border border-teal-200">
-                    PDF 1p
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {pdf.fileSize}
-                  </span>
-                </div>
+                {(() => {
+                  const badge = getFileBadgeInfo(pdf.fileName);
+                  return (
+                    <div className="flex items-center space-x-1.5 mb-0.5">
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${badge.bg} ${badge.text} ${badge.border}`}
+                      >
+                        {badge.label}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {pdf.fileSize}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <p className="text-xs font-bold text-slate-800 truncate group-hover/thumb:text-teal-700 transition-colors">
                   {pdf.fileName}
                 </p>
                 <p className="text-[10px] text-slate-400 flex items-center mt-0.5">
                   <Maximize2 className="w-3 h-3 mr-1 text-teal-600" />
-                  클릭하여 전체 확대 열람
+                  클릭하여 열람 및 다운로드
                 </p>
               </div>
             </div>

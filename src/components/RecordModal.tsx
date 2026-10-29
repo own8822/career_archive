@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, UploadCloud, Trash2, Check } from 'lucide-react';
+import { X, FileText, UploadCloud, Trash2, Check, Paperclip } from 'lucide-react';
 import { Student, CounselingRecord, PdfAttachment } from '../types';
-import { generatePdfThumbnail } from '../utils/pdfThumbnail';
+import { generateAttachmentThumbnail, getFileBadgeInfo } from '../utils/pdfThumbnail';
 
 interface RecordModalProps {
   isOpen: boolean;
@@ -24,7 +24,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [pdfs, setPdfs] = useState<PdfAttachment[]>([]);
-  const [isProcessingPdf, setIsProcessingPdf] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
 
   useEffect(() => {
     if (recordToEdit) {
@@ -44,37 +44,70 @@ export const RecordModal: React.FC<RecordModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Handle multiple real PDF uploads
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  if (students.length === 0) {
+    return (
+      <div 
+        className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={onClose}
+      >
+        <div 
+          className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center border border-sky-100"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto mb-3">
+            <FileText className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-slate-800 mb-1">등록된 학생이 없습니다</h3>
+          <p className="text-xs text-slate-500 mb-5">
+            상담 기록을 작성하기 전에 상단의 [학생 추가] 버튼을 눌러 학생을 먼저 등록해주세요.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-xs transition-colors"
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle multiple file uploads (PDF, Word, HWP, Images)
+  const ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'hwp', 'hwpx', 'jpg', 'jpeg', 'png', 'webp'];
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setIsProcessingPdf(true);
+    setIsProcessingFile(true);
     const newAttachments: PdfAttachment[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-        alert(`${file.name}은(는) PDF 파일이 아닙니다.`);
+      const ext = file.name.toLowerCase().split('.').pop() || '';
+      if (!ALLOWED_EXTS.includes(ext)) {
+        alert(
+          `${file.name}은(는) 지원되지 않는 파일 형식입니다.\n\n지원 형식: PDF, 워드(.doc/.docx), 한글(.hwp/.hwpx), 이미지(.jpg/.png)`
+        );
         continue;
       }
 
-      // Generate real page 1 thumbnail
-      const { dataUrl, thumbnailUrl } = await generatePdfThumbnail(file);
+      // Generate preview thumbnail (PDF page 1, real image, or Word/HWP badge)
+      const { dataUrl, thumbnailUrl } = await generateAttachmentThumbnail(file);
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
 
       newAttachments.push({
-        id: `pdf-${Date.now()}-${i}`,
+        id: `file-${Date.now()}-${i}`,
         fileName: file.name,
         fileSize: `${sizeMb} MB`,
         uploadedAt: new Date().toISOString().substring(0, 10),
         dataUrl,
-        thumbnailUrl
+        thumbnailUrl,
       });
     }
 
     setPdfs((prev) => [...prev, ...newAttachments]);
-    setIsProcessingPdf(false);
+    setIsProcessingFile(false);
     e.target.value = ''; // Reset input
   };
 
@@ -187,79 +220,94 @@ export const RecordModal: React.FC<RecordModalProps> = ({
             />
           </div>
 
-          {/* 4. Multiple PDF Attachments */}
+          {/* 4. Multiple File Attachments (PDF, Word, HWP, Images) */}
           <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-700 flex items-center">
-                <FileText className="w-4 h-4 mr-1 text-teal-600" />
-                PDF 첨부자료 ({pdfs.length}개)
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="font-semibold text-slate-700 flex items-center text-xs">
+                  <Paperclip className="w-3.5 h-3.5 mr-1 text-teal-600" />
+                  첨부파일 ({pdfs.length}개)
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  PDF, 워드(.doc/.docx), 한글(.hwp/.hwpx), 이미지(.jpg/.png) 지원
+                </p>
+              </div>
 
               {/* Upload Button */}
-              <label className="cursor-pointer inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-white border border-teal-300 text-teal-700 hover:bg-teal-50 text-xs font-semibold shadow-2xs transition-all">
+              <label className="cursor-pointer inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white border border-teal-300 text-teal-700 hover:bg-teal-50 text-xs font-semibold shadow-2xs transition-all shrink-0">
                 <UploadCloud className="w-3.5 h-3.5" />
-                <span>PDF 파일 추가</span>
+                <span>파일 추가</span>
                 <input
                   type="file"
                   multiple
-                  accept="application/pdf"
-                  onChange={handlePdfUpload}
+                  accept=".pdf,.doc,.docx,.hwp,.hwpx,.jpg,.jpeg,.png,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
+                  onChange={handleFileUpload}
                   className="hidden"
                 />
               </label>
             </div>
 
-            {isProcessingPdf && (
+            {isProcessingFile && (
               <p className="text-[11px] text-teal-600 font-medium animate-pulse">
-                PDF 첫 페이지 썸네일을 렌더링 중입니다...
+                첨부파일 썸네일을 생성 및 처리 중입니다...
               </p>
             )}
 
-            {/* List of attached PDFs */}
+            {/* List of attached files */}
             {pdfs.length > 0 ? (
               <div className="space-y-2 pt-1">
-                {pdfs.map((pdf) => (
-                  <div
-                    key={pdf.id}
-                    className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs"
-                  >
-                    <div className="flex items-center space-x-2.5 truncate pr-2">
-                      {/* Mini Thumbnail */}
-                      {pdf.thumbnailUrl ? (
-                        <img
-                          src={pdf.thumbnailUrl}
-                          alt="Thumb"
-                          className="w-8 h-10 object-cover rounded border border-slate-200 shadow-2xs shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center text-rose-500 shrink-0">
-                          <FileText className="w-4 h-4" />
-                        </div>
-                      )}
-                      <div className="truncate">
-                        <p className="font-semibold text-slate-800 truncate text-xs">
-                          {pdf.fileName}
-                        </p>
-                        <p className="text-[10px] text-slate-400">
-                          {pdf.fileSize} · 첫 페이지 썸네일 생성됨
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePdf(pdf.id)}
-                      className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors shrink-0"
-                      title="PDF 삭제"
+                {pdfs.map((pdf) => {
+                  const badge = getFileBadgeInfo(pdf.fileName);
+                  return (
+                    <div
+                      key={pdf.id}
+                      className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center space-x-2.5 truncate pr-2">
+                        {/* Mini Thumbnail */}
+                        {pdf.thumbnailUrl ? (
+                          <img
+                            src={pdf.thumbnailUrl}
+                            alt="Thumb"
+                            className="w-8 h-10 object-cover rounded border border-slate-200 shadow-2xs shrink-0 bg-slate-50"
+                          />
+                        ) : (
+                          <div className="w-8 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center text-teal-600 shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div className="truncate">
+                          <div className="flex items-center space-x-1.5 mb-0.5">
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${badge.bg} ${badge.text} ${badge.border}`}
+                            >
+                              {badge.label}
+                            </span>
+                            <p className="font-semibold text-slate-800 truncate text-xs">
+                              {pdf.fileName}
+                            </p>
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            {pdf.fileSize} · {badge.desc}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePdf(pdf.id)}
+                        className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors shrink-0"
+                        title="파일 삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="py-4 text-center text-slate-400 border border-dashed border-sky-200 rounded-lg bg-white/50 text-[11px]">
-                첨부된 PDF 파일이 없습니다. 여러 개의 PDF 파일을 업로드할 수 있습니다.
+                첨부된 파일이 없습니다. 여러 개의 파일(PDF, 워드, 한글, 이미지)을 업로드할 수 있습니다.
               </div>
             )}
           </div>
@@ -275,7 +323,7 @@ export const RecordModal: React.FC<RecordModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isProcessingPdf}
+              disabled={isProcessingFile}
               className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold shadow-xs transition-colors flex items-center space-x-1 disabled:opacity-50"
             >
               <Check className="w-3.5 h-3.5" />

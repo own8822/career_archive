@@ -1,8 +1,7 @@
 import { Student, CounselingRecord, AuthSettings } from '../types';
-import { INITIAL_STUDENTS } from '../data/mockData';
 import { supabase, isSupabaseConfigured } from './supabase';
 
-const DB_NAME = 'CareerArchiveDB';
+const DB_NAME = 'CareerArchiveDB_v2';
 const DB_VERSION = 1;
 const STORE_NAME = 'students';
 const AUTH_SETTINGS_KEY = 'career_archive_auth_settings_v3';
@@ -30,6 +29,13 @@ class LocalArchiveStorage {
     if (this.dbPromise) return this.dbPromise;
 
     this.dbPromise = new Promise((resolve, reject) => {
+      // 기존 더미데이터가 포함된 레거시 DB 정리
+      try {
+        indexedDB.deleteDatabase('CareerArchiveDB');
+      } catch {
+        // ignore
+      }
+
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onupgradeneeded = (event) => {
@@ -131,8 +137,7 @@ class LocalArchiveStorage {
               await this.seedSupabase(localStudents);
               return localStudents;
             }
-            await this.seedSupabase(INITIAL_STUDENTS);
-            return INITIAL_STUDENTS;
+            return [];
           }
 
           const combined: Student[] = studentsData.map((s) => {
@@ -176,12 +181,7 @@ class LocalArchiveStorage {
 
       req.onsuccess = async () => {
         const result = req.result as Student[];
-        if (!result || result.length === 0) {
-          await this.saveAllStudentsLocal(INITIAL_STUDENTS);
-          resolve(INITIAL_STUDENTS);
-        } else {
-          resolve(result);
-        }
+        resolve(result || []);
       };
 
       req.onerror = () => reject(req.error);

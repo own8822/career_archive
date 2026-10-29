@@ -256,7 +256,29 @@ export const AppContent: React.FC = () => {
           </div>
         </div>
 
-        {filteredStudents.length > 0 ? (
+        {students.length === 0 ? (
+          /* Empty state: No students yet */
+          <div className="w-full flex flex-col items-center justify-center py-24 px-4 text-center">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-sky-100 to-teal-100 border border-teal-200/60 flex items-center justify-center text-teal-600 mb-4 shadow-2xs">
+              <Users className="w-8 h-8" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-1">등록된 학생이 없습니다</h3>
+            <p className="text-xs text-slate-500 max-w-sm mb-6 leading-relaxed">
+              {isAdmin
+                ? '새로운 학생을 등록하고 상담 및 첨삭 기록(PDF, 워드, 한글, 이미지)을 작성해보세요.'
+                : '현재 등록된 학생 데이터가 없습니다. 관리자가 학생을 등록하면 이곳에 표시됩니다.'}
+            </p>
+            {isAdmin && (
+              <button
+                onClick={() => setIsAddStudentOpen(true)}
+                className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>첫 학생 등록하기</span>
+              </button>
+            )}
+          </div>
+        ) : filteredStudents.length > 0 ? (
           /* Responsive Masonry Multi-column: 1 col on mobile -> 2 on sm -> 3 on lg -> 4 on xl */
           <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5 [column-fill:_balance]">
             {filteredStudents.map((student) => (
@@ -296,7 +318,7 @@ export const AppContent: React.FC = () => {
             <div className="w-12 h-12 rounded-full bg-white shadow-2xs border border-sky-100 flex items-center justify-center text-teal-500 mb-3">
               <Users className="w-6 h-6" />
             </div>
-            <p className="text-sm font-semibold text-slate-700">일치하는 학생이 없습니다</p>
+            <p className="text-sm font-semibold text-slate-700">검색 결과와 일치하는 학생이 없습니다</p>
             <p className="text-xs text-slate-400 mt-1">학생 이름이나 기수 필터를 다시 확인해보세요.</p>
           </div>
         )}
