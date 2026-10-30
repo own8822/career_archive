@@ -7,14 +7,22 @@ export const LoginModal: React.FC = () => {
   const [code, setCode] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setIsSubmitting(true);
 
-    const res = login(code);
-    if (!res.success) {
-      setErrorMsg(res.message || '접속 코드가 올바르지 않습니다.');
+    try {
+      const res = await login(code);
+      if (!res.success) {
+        setErrorMsg(res.message || '접속 코드가 올바르지 않습니다.');
+      }
+    } catch {
+      setErrorMsg('서버 접속 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -89,10 +97,15 @@ export const LoginModal: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 text-xs cursor-pointer"
+            disabled={isSubmitting}
+            className={`w-full py-2.5 text-white font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 text-xs ${
+              isSubmitting
+                ? 'bg-teal-400 cursor-not-allowed'
+                : 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 cursor-pointer'
+            }`}
           >
-            <span>입장하기</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{isSubmitting ? '코드 확인 중...' : '입장하기'}</span>
+            {!isSubmitting && <ArrowRight className="w-4 h-4" />}
           </button>
         </form>
       </div>

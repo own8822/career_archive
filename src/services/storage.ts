@@ -1,5 +1,5 @@
 import { Student, CounselingRecord, AuthSettings } from '../types';
-import { supabase, isSupabaseConfigured } from './supabase';
+import { getSupabase, isSupabaseConfigured, setSessionToken, getSessionToken } from './supabase';
 
 const DB_NAME = 'CareerArchiveDB_v2';
 const DB_VERSION = 1;
@@ -53,28 +53,62 @@ class LocalArchiveStorage {
   }
 
   // ==========================================
-  // Auth Settings
+  // Server-Side Code Verification & Auth
   // ==========================================
-  async getAuthSettings(): Promise<AuthSettings> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('auth_settings')
-          .select('admin_code, viewer_codes')
-          .eq('id', 'global_auth')
-          .single();
+  async verifyAccessCode(code: string): Promise<{ success: boolean; role?: 'admin' | 'viewer'; message?: string }> {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      return { success: false, message: '접속 코드를 입력해주세요.' };
+    }
 
-        if (!error && data) {
-          return {
-            adminCode: data.admin_code,
-            viewerCodes: Array.isArray(data.viewer_codes) ? data.viewer_codes : DEFAULT_AUTH_SETTINGS.viewerCodes,
-          };
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          const { data, error } = await client.rpc('authenticate_code', { p_code: trimmed });
+          if (error) {
+            console.error('Supabase authenticate_code error:', error);
+            return { success: false, message: '서버 인증 중 오류가 발생했습니다.' };
+          }
+          if (data && data.success) {
+            setSessionToken(data.session_token);
+            return { success: true, role: data.role };
+          }
+          return { success: false, message: data?.message || '접속 코드가 올바르지 않습니다.' };
+        } catch (e) {
+          console.error('Supabase authenticate_code exception:', e);
+          return { success: false, message: '서버 접속 실패' };
         }
-      } catch (e) {
-        console.warn('Supabase auth load failed, falling back to local storage', e);
       }
     }
 
+    // Local fallback when Supabase is not configured
+    const local = await this.getLocalAuthSettings();
+    if (trimmed === local.adminCode) {
+      return { success: true, role: 'admin' };
+    }
+    if (local.viewerCodes.includes(trimmed)) {
+      return { success: true, role: 'viewer' };
+    }
+    return { success: false, message: '접속 코드가 올바르지 않습니다.' };
+  }
+
+  async logoutRemote(): Promise<void> {
+    const token = getSessionToken();
+    if (token && isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client.rpc('invalidate_session', { p_token: token });
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    setSessionToken(null);
+  }
+
+  async getLocalAuthSettings(): Promise<AuthSettings> {
     try {
       const raw = localStorage.getItem(AUTH_SETTINGS_KEY);
       if (raw) {
@@ -86,25 +120,44 @@ class LocalArchiveStorage {
     } catch (e) {
       console.warn('Failed to parse local auth settings', e);
     }
-
     return DEFAULT_AUTH_SETTINGS;
+  }
+
+  async getAuthSettings(): Promise<AuthSettings> {
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          const { data, error } = await client.rpc('get_auth_codes_secure');
+          if (!error && data) {
+            return {
+              adminCode: data.adminCode,
+              viewerCodes: Array.isArray(data.viewerCodes) ? data.viewerCodes : DEFAULT_AUTH_SETTINGS.viewerCodes,
+            };
+          }
+        } catch (e) {
+          console.warn('Remote get_auth_codes_secure failed (viewer or unauthenticated):', e);
+        }
+      }
+    }
+
+    return this.getLocalAuthSettings();
   }
 
   async saveAuthSettings(settings: AuthSettings): Promise<void> {
     localStorage.setItem(AUTH_SETTINGS_KEY, JSON.stringify(settings));
 
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase
-          .from('auth_settings')
-          .upsert({
-            id: 'global_auth',
-            admin_code: settings.adminCode,
-            viewer_codes: settings.viewerCodes,
-            updated_at: new Date().toISOString(),
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client.rpc('update_auth_codes_secure', {
+            p_admin_code: settings.adminCode,
+            p_viewer_codes: settings.viewerCodes,
           });
-      } catch (e) {
-        console.error('Failed to sync auth settings to Supabase', e);
+        } catch (e) {
+          console.error('Remote update_auth_codes_secure failed:', e);
+        }
       }
     }
   }
@@ -113,66 +166,69 @@ class LocalArchiveStorage {
   // Students & Records
   // ==========================================
   async getAllStudents(): Promise<Student[]> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        const { data: studentsData, error: sError } = await supabase
-          .from('students')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (sError) throw sError;
-
-        if (studentsData) {
-          const { data: recordsData, error: rError } = await supabase
-            .from('records')
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          const { data: studentsData, error: sError } = await client
+            .from('students')
             .select('*')
             .order('created_at', { ascending: false });
 
-          if (rError) throw rError;
+          if (sError) throw sError;
 
-          if (studentsData.length === 0) {
-            // Check if local has data to migrate
-            const localStudents = await this.getLocalStudentsOnly();
-            if (localStudents.length > 0) {
-              await this.seedSupabase(localStudents);
-              return localStudents;
+          if (studentsData) {
+            const { data: recordsData, error: rError } = await client
+              .from('records')
+              .select('*')
+              .order('created_at', { ascending: false });
+
+            if (rError) throw rError;
+
+            if (studentsData.length === 0) {
+              // Check if local has data to migrate
+              const localStudents = await this.getLocalStudentsOnly();
+              if (localStudents.length > 0) {
+                await this.seedSupabase(localStudents);
+                return localStudents;
+              }
+              return [];
             }
-            return [];
+
+            const combined: Student[] = studentsData.map((s) => {
+              const studentRecords = (recordsData || [])
+                .filter((r) => r.student_id === s.id)
+                .map((r) => ({
+                  id: r.id,
+                  studentId: r.student_id,
+                  date: r.date,
+                  title: r.title,
+                  content: r.content,
+                  pdfs: Array.isArray(r.pdfs) ? r.pdfs : [],
+                }));
+
+              return {
+                id: s.id,
+                name: s.name,
+                cohort: s.cohort,
+                createdAt: s.created_at,
+                orderNo: s.order_no ?? s.orderNo,
+                birthYear: s.birth_year ?? s.birthYear,
+                phone: s.phone,
+                email: s.email,
+                university: s.university,
+                major1: s.major1,
+                major2: s.major2,
+                memo: s.memo,
+                records: studentRecords,
+              };
+            });
+
+            return combined;
           }
-
-          const combined: Student[] = studentsData.map((s) => {
-            const studentRecords = (recordsData || [])
-              .filter((r) => r.student_id === s.id)
-              .map((r) => ({
-                id: r.id,
-                studentId: r.student_id,
-                date: r.date,
-                title: r.title,
-                content: r.content,
-                pdfs: Array.isArray(r.pdfs) ? r.pdfs : [],
-              }));
-
-            return {
-              id: s.id,
-              name: s.name,
-              cohort: s.cohort,
-              createdAt: s.created_at,
-              orderNo: s.order_no ?? s.orderNo,
-              birthYear: s.birth_year ?? s.birthYear,
-              phone: s.phone,
-              email: s.email,
-              university: s.university,
-              major1: s.major1,
-              major2: s.major2,
-              memo: s.memo,
-              records: studentRecords,
-            };
-          });
-
-          return combined;
+        } catch (err) {
+          console.warn('Supabase fetch failed, falling back to local IndexedDB', err);
         }
-      } catch (err) {
-        console.warn('Supabase fetch failed, falling back to local IndexedDB', err);
       }
     }
 
@@ -197,16 +253,25 @@ class LocalArchiveStorage {
   }
 
   async seedSupabase(students: Student[]): Promise<void> {
-    if (!supabase) return;
+    const client = getSupabase();
+    if (!client) return;
     for (const s of students) {
-      await supabase.from('students').upsert({
+      await client.from('students').upsert({
         id: s.id,
         name: s.name,
         cohort: s.cohort,
+        order_no: s.orderNo,
+        birth_year: s.birthYear,
+        phone: s.phone,
+        email: s.email,
+        university: s.university,
+        major1: s.major1,
+        major2: s.major2,
+        memo: s.memo,
         created_at: s.createdAt || new Date().toISOString(),
       });
       for (const r of s.records) {
-        await supabase.from('records').upsert({
+        await client.from('records').upsert({
           id: r.id,
           student_id: s.id,
           date: r.date,
@@ -234,16 +299,27 @@ class LocalArchiveStorage {
   }
 
   async addStudent(student: Student): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase.from('students').insert({
-          id: student.id,
-          name: student.name,
-          cohort: student.cohort,
-          created_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.error('Supabase addStudent failed:', e);
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client.from('students').insert({
+            id: student.id,
+            name: student.name,
+            cohort: student.cohort,
+            order_no: student.orderNo,
+            birth_year: student.birthYear,
+            phone: student.phone,
+            email: student.email,
+            university: student.university,
+            major1: student.major1,
+            major2: student.major2,
+            memo: student.memo,
+            created_at: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error('Supabase addStudent failed:', e);
+        }
       }
     }
 
@@ -267,26 +343,29 @@ class LocalArchiveStorage {
         ? { name: updates, cohort: legacyCohort }
         : updates;
 
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        const payload: Record<string, any> = {};
-        if (updateObj.name !== undefined) payload.name = updateObj.name;
-        if (updateObj.cohort !== undefined) payload.cohort = updateObj.cohort;
-        if (updateObj.phone !== undefined) payload.phone = updateObj.phone;
-        if (updateObj.email !== undefined) payload.email = updateObj.email;
-        if (updateObj.university !== undefined) payload.university = updateObj.university;
-        if (updateObj.major1 !== undefined) payload.major1 = updateObj.major1;
-        if (updateObj.major2 !== undefined) payload.major2 = updateObj.major2;
-        if (updateObj.birthYear !== undefined) payload.birth_year = updateObj.birthYear;
-        if (updateObj.orderNo !== undefined) payload.order_no = updateObj.orderNo;
-        if (updateObj.memo !== undefined) payload.memo = updateObj.memo;
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          const payload: Record<string, any> = {};
+          if (updateObj.name !== undefined) payload.name = updateObj.name;
+          if (updateObj.cohort !== undefined) payload.cohort = updateObj.cohort;
+          if (updateObj.phone !== undefined) payload.phone = updateObj.phone;
+          if (updateObj.email !== undefined) payload.email = updateObj.email;
+          if (updateObj.university !== undefined) payload.university = updateObj.university;
+          if (updateObj.major1 !== undefined) payload.major1 = updateObj.major1;
+          if (updateObj.major2 !== undefined) payload.major2 = updateObj.major2;
+          if (updateObj.birthYear !== undefined) payload.birth_year = updateObj.birthYear;
+          if (updateObj.orderNo !== undefined) payload.order_no = updateObj.orderNo;
+          if (updateObj.memo !== undefined) payload.memo = updateObj.memo;
 
-        await supabase
-          .from('students')
-          .update(payload)
-          .eq('id', studentId);
-      } catch (e) {
-        console.error('Supabase updateStudent failed:', e);
+          await client
+            .from('students')
+            .update(payload)
+            .eq('id', studentId);
+        } catch (e) {
+          console.error('Supabase updateStudent failed:', e);
+        }
       }
     }
 
@@ -312,7 +391,7 @@ class LocalArchiveStorage {
 
   async saveStudentsBatch(students: Student[]): Promise<void> {
     const db = await this.getDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       for (const s of students) {
@@ -321,14 +400,28 @@ class LocalArchiveStorage {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
+
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await this.seedSupabase(students);
+        } catch (e) {
+          console.error('Supabase batch save error:', e);
+        }
+      }
+    }
   }
 
   async deleteStudent(studentId: string): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase.from('students').delete().eq('id', studentId);
-      } catch (e) {
-        console.error('Supabase deleteStudent error:', e);
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client.from('students').delete().eq('id', studentId);
+        } catch (e) {
+          console.error('Supabase deleteStudent error:', e);
+        }
       }
     }
 
@@ -343,19 +436,22 @@ class LocalArchiveStorage {
   }
 
   async addRecord(studentId: string, record: CounselingRecord): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase.from('records').insert({
-          id: record.id,
-          student_id: studentId,
-          date: record.date,
-          title: record.title,
-          content: record.content,
-          pdfs: record.pdfs || [],
-          created_at: new Date().toISOString(),
-        });
-      } catch (e) {
-        console.error('Supabase addRecord failed:', e);
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client.from('records').insert({
+            id: record.id,
+            student_id: studentId,
+            date: record.date,
+            title: record.title,
+            content: record.content,
+            pdfs: record.pdfs || [],
+            created_at: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error('Supabase addRecord failed:', e);
+        }
       }
     }
 
@@ -380,19 +476,22 @@ class LocalArchiveStorage {
   }
 
   async updateRecord(studentId: string, updatedRecord: CounselingRecord): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase
-          .from('records')
-          .update({
-            date: updatedRecord.date,
-            title: updatedRecord.title,
-            content: updatedRecord.content,
-            pdfs: updatedRecord.pdfs || [],
-          })
-          .eq('id', updatedRecord.id);
-      } catch (e) {
-        console.error('Supabase updateRecord failed:', e);
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client
+            .from('records')
+            .update({
+              date: updatedRecord.date,
+              title: updatedRecord.title,
+              content: updatedRecord.content,
+              pdfs: updatedRecord.pdfs || [],
+            })
+            .eq('id', updatedRecord.id);
+        } catch (e) {
+          console.error('Supabase updateRecord failed:', e);
+        }
       }
     }
 
@@ -419,11 +518,14 @@ class LocalArchiveStorage {
   }
 
   async deleteRecord(studentId: string, recordId: string): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase.from('records').delete().eq('id', recordId);
-      } catch (e) {
-        console.error('Supabase deleteRecord error:', e);
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          await client.from('records').delete().eq('id', recordId);
+        } catch (e) {
+          console.error('Supabase deleteRecord error:', e);
+        }
       }
     }
 
@@ -473,7 +575,7 @@ class LocalArchiveStorage {
     }
 
     // If supabase connected, sync to supabase as well
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured()) {
       await this.seedSupabase(parsed.students);
       if (parsed.auth) {
         await this.saveAuthSettings(parsed.auth);
@@ -484,7 +586,7 @@ class LocalArchiveStorage {
   }
 
   async syncLocalToSupabase(): Promise<number> {
-    if (!isSupabaseConfigured() || !supabase) {
+    if (!isSupabaseConfigured()) {
       throw new Error('수파베이스가 .env에 설정되지 않았습니다.');
     }
     const localStudents = await this.getLocalStudentsOnly();

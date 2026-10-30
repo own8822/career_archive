@@ -10,7 +10,7 @@ interface AuthContextType {
   isViewer: boolean;
   isAuthenticated: boolean;
   authSettings: AuthSettings;
-  login: (code: string) => { success: boolean; role?: UserRole; message?: string };
+  login: (code: string) => Promise<{ success: boolean; role?: UserRole; message?: string }>;
   logout: () => void;
   updateAuthCodes: (adminCode: string, viewerCodes: string[]) => void;
 }
@@ -30,39 +30,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const loadSettings = async () => {
-      const loaded = await archiveStorage.getAuthSettings();
-      setAuthSettings(loaded);
+      // 오직 관리자(admin)일 때만 상세 코드 목록을 조회 (열람자/미인증자에게는 코드 목록을 절대 전송하지 않음)
+      if (currentRole === 'admin') {
+        const loaded = await archiveStorage.getAuthSettings();
+        setAuthSettings(loaded);
+      }
     };
     loadSettings();
-  }, []);
+  }, [currentRole]);
 
-  const login = (code: string): { success: boolean; role?: UserRole; message?: string } => {
+  const login = async (code: string): Promise<{ success: boolean; role?: UserRole; message?: string }> => {
     const trimmed = code.trim();
     if (!trimmed) {
       return { success: false, message: '접속 코드를 입력해주세요.' };
     }
 
-    // 1. Check Admin Code
-    if (trimmed === authSettings.adminCode) {
-      setCurrentRole('admin');
-      sessionStorage.setItem(SESSION_ROLE_KEY, 'admin');
-      return { success: true, role: 'admin' };
-    }
-
-    // 2. Check 10 Viewer Codes
-    if (authSettings.viewerCodes.includes(trimmed)) {
-      setCurrentRole('viewer');
-      sessionStorage.setItem(SESSION_ROLE_KEY, 'viewer');
-      return { success: true, role: 'viewer' };
+    // 서버 측 코드 검증 (Supabase RPC authenticate_code 또는 로컬 검증)
+    const res = await archiveStorage.verifyAccessCode(trimmed);
+    if (res.success && res.role) {
+      setCurrentRole(res.role);
+      sessionStorage.setItem(SESSION_ROLE_KEY, res.role);
+      return { success: true, role: res.role };
     }
 
     return {
       success: false,
-      message: '접속 코드가 올바르지 않습니다.'
+      message: res.message || '접속 코드가 올바르지 않습니다.',
     };
   };
 
   const logout = () => {
+    archiveStorage.logoutRemote();
     setCurrentRole(null);
     sessionStorage.removeItem(SESSION_ROLE_KEY);
   };
