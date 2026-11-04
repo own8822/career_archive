@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut, Database, Layers, FileSpreadsheet } from 'lucide-react';
+import { isSupabaseConfigured } from '../services/supabase';
+import { ShieldCheck, Eye, UserPlus, Search, X, Sparkles, KeyRound, LogOut, Database, Layers, FileSpreadsheet, Cloud, HardDrive } from 'lucide-react';
 
 interface HeaderProps {
   searchKeyword: string;
@@ -81,6 +82,19 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Right Action: Role Badge & Admin Tools & Logout */}
           <div className="flex items-center space-x-2 shrink-0">
             
+            {/* Cloud Connection Badge */}
+            {isSupabaseConfigured() ? (
+              <div className="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold" title="Supabase 클라우드 데이터베이스 연동 활성화">
+                <Cloud className="w-3 h-3 text-emerald-600" />
+                <span>클라우드</span>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center space-x-1 px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold" title="로컬 오프라인 모드 (.env 미적용)">
+                <HardDrive className="w-3 h-3 text-amber-600" />
+                <span>로컬</span>
+              </div>
+            )}
+
             {/* Role Badge */}
             {isAdmin ? (
               <div className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 text-xs font-bold">

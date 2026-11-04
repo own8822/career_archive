@@ -1,7 +1,11 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// 기본 연결 프로젝트 (로컬 및 GitHub Pages 배포 시 동일하게 적용되는 공개 프로젝트 정보)
+const DEFAULT_SUPABASE_URL = 'https://ipebholzwovobkbzqbdn.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_HRw7W27mw0-p7f3KqYLFWw_G9XAXVlD';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 const SESSION_TOKEN_KEY = 'career_archive_session_token';
 

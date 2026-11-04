@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, Eye, EyeOff, ArrowRight, AlertCircle, Shield } from 'lucide-react';
+import { Lock, Eye, EyeOff, ArrowRight, AlertCircle, Shield, Cloud, HardDrive } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { isSupabaseConfigured } from '../services/supabase';
 
 export const LoginModal: React.FC = () => {
   const { login } = useAuth();
@@ -47,6 +48,22 @@ export const LoginModal: React.FC = () => {
             </p>
           </div>
           <div className="absolute -bottom-8 -right-8 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+        </div>
+
+        {/* Database Connection Status Banner */}
+        <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px]">
+          <span className="text-slate-500 font-medium">연동 상태</span>
+          {isSupabaseConfigured() ? (
+            <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              <Cloud className="w-3 h-3 text-emerald-500" />
+              Supabase 클라우드
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+              <HardDrive className="w-3 h-3 text-amber-500" />
+              로컬 오프라인 모드
+            </span>
+          )}
         </div>
 
         {/* Clean Login Form */}

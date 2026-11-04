@@ -1,8 +1,17 @@
 export type UserRole = 'admin' | 'viewer' | null;
 
+export interface AccessCodeMeta {
+  id: string;
+  codeType: 'admin' | 'viewer';
+  codeName: string;
+  createdAt: string;
+  revokedAt?: string | null;
+  isActive: boolean;
+}
+
 export interface AuthSettings {
   adminCode: string;
-  viewerCodes: string[]; // ubion0112 ~ ubion1012
+  viewerCodes: string[];
 }
 
 export interface PdfAttachment {
