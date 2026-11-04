@@ -24,6 +24,19 @@ export interface PdfAttachment {
   pageCount?: number;
 }
 
+export interface StudentAttachment {
+  id: string;
+  studentId: string;
+  fileName: string;
+  fileSize: string;
+  fileBytes?: number;
+  mimeType: string;
+  storagePath?: string;
+  dataUrl?: string;
+  thumbnailUrl?: string;
+  uploadedAt: string;
+}
+
 export interface CounselingRecord {
   id: string;
   studentId: string;
@@ -38,6 +51,7 @@ export interface Student {
   name: string;
   cohort: string; // e.g. "디금융 1기", "디금융 8기"
   records: CounselingRecord[];
+  attachments?: StudentAttachment[]; // 학생별 첨부파일 (PDF, 워드, 한글, 이미지 등)
   createdAt: string;
 
   // 구글 시트 / 엑셀 명부 연동 인적사항

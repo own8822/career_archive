@@ -12,7 +12,7 @@ import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
 import { archiveStorage } from './services/storage';
 import { isSupabaseConfigured } from './services/supabase';
-import { Student, CounselingRecord, PdfAttachment, PRESET_COHORTS } from './types';
+import { Student, CounselingRecord, PdfAttachment, StudentAttachment, PRESET_COHORTS } from './types';
 import { Plus, Users, Database } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
@@ -229,6 +229,12 @@ export const AppContent: React.FC = () => {
     setIsEditStudentOpen(true);
   };
 
+  const handleUpdateStudentAttachments = (studentId: string, updatedAttachments: StudentAttachment[]) => {
+    setStudents((prev) =>
+      prev.map((s) => (s.id === studentId ? { ...s, attachments: updatedAttachments } : s))
+    );
+  };
+
   // 비로그인 상태일 경우 메인 대시보드 및 학생 데이터를 전혀 렌더링하지 않고 전용 로그인 화면만 표시
   if (!isAuthenticated) {
     return <LoginModal />;
@@ -333,6 +339,7 @@ export const AppContent: React.FC = () => {
                 onEditStudent={handleOpenEditStudent}
                 onDeleteStudent={handleDeleteStudent}
                 onOpenPdf={(pdf, studentName) => setSelectedPdf({ pdf, studentName })}
+                onUpdateAttachments={handleUpdateStudentAttachments}
               />
             ))}
 

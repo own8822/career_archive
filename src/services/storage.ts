@@ -1,5 +1,29 @@
-import { Student, CounselingRecord, AuthSettings, AccessCodeMeta } from '../types';
+import { Student, CounselingRecord, AuthSettings, AccessCodeMeta, StudentAttachment } from '../types';
 import { getSupabase, isSupabaseConfigured, setSessionToken, getSessionToken } from './supabase';
+import { generateAttachmentThumbnail } from '../utils/pdfThumbnail';
+
+export const SUPPORTED_ATTACHMENT_EXTENSIONS = [
+  'pdf',
+  'hwp',
+  'hwpx',
+  'png',
+  'jpg',
+  'jpeg',
+  'webp',
+  'doc',
+  'docx',
+];
+
+export function isSupportedAttachment(fileName: string): boolean {
+  const ext = fileName.toLowerCase().split('.').pop() || '';
+  return SUPPORTED_ATTACHMENT_EXTENSIONS.includes(ext);
+}
+
+export function formatAttachmentSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 const DB_NAME = 'CareerArchiveDB_v2';
 const DB_VERSION = 1;
@@ -310,6 +334,267 @@ class LocalArchiveStorage {
   }
 
   // ==========================================
+  // Student Attachments (Supabase Storage + DB)
+  // ==========================================
+  async uploadStudentAttachment(
+    studentId: string,
+    file: File,
+    onProgress?: (percent: number) => void
+  ): Promise<StudentAttachment> {
+    if (!isSupportedAttachment(file.name)) {
+      throw new Error('지원하지 않는 파일 형식입니다. (지원 형식: PDF, HWP, HWPX, PNG, JPG, DOC, DOCX)');
+    }
+
+    const MAX_BYTES = 25 * 1024 * 1024; // 25MB
+    if (file.size > MAX_BYTES) {
+      throw new Error('파일 크기 한도 초과: 첨부파일은 최대 25MB까지만 업로드할 수 있습니다.');
+    }
+
+    onProgress?.(10);
+
+    // 1. 썸네일 및 dataUrl 생성
+    let dataUrl = '';
+    let thumbnailUrl = '';
+    try {
+      const res = await generateAttachmentThumbnail(file);
+      dataUrl = res.dataUrl;
+      thumbnailUrl = res.thumbnailUrl;
+    } catch (thumbErr) {
+      console.warn('Thumbnail generation warning:', thumbErr);
+    }
+
+    onProgress?.(30);
+
+    const cleanExt = file.name.split('.').pop() || 'bin';
+    const safeBaseName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_\-\uAC00-\uD7A3]/g, '_');
+    const uniqueId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // 같은 이름의 파일을 올려도 기존 파일을 덮어쓰지 않도록 타임스탬프와 난수 추가
+    const storagePath = `${studentId}/${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${safeBaseName}.${cleanExt}`;
+    const fileSizeFormatted = formatAttachmentSize(file.size);
+    const nowIso = new Date().toISOString();
+    const dateFormatted = new Date().toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .replace(/\. /g, '.')
+      .replace(/\.$/, '');
+
+    let storageUploadSuccess = false;
+
+    // 2. Supabase Storage 비공개 버킷 업로드
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          onProgress?.(50);
+          const { error: storageError } = await client.storage
+            .from('student-files')
+            .upload(storagePath, file, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          if (!storageError) {
+            storageUploadSuccess = true;
+          } else {
+            console.warn('Supabase Storage upload warning (fallback to DB):', storageError.message);
+          }
+        } catch (stErr) {
+          console.warn('Supabase Storage exception (fallback to DB):', stErr);
+        }
+
+        onProgress?.(70);
+
+        // 3. Supabase DB 메타데이터 등록 (RPC 및 테이블)
+        try {
+          const payloadData = (!storageUploadSuccess || file.size < 2 * 1024 * 1024) ? dataUrl : null;
+          const { error: rpcError } = await client.rpc('upload_student_attachment_secure', {
+            p_id: uniqueId,
+            p_student_id: studentId,
+            p_file_name: file.name,
+            p_file_size: fileSizeFormatted,
+            p_file_bytes: file.size,
+            p_mime_type: file.type || 'application/octet-stream',
+            p_storage_path: storagePath,
+            p_file_data: payloadData,
+          });
+
+          if (rpcError) {
+            console.warn('upload_student_attachment_secure RPC warning, trying direct insert:', rpcError.message);
+            const { error: insertError } = await client.from('student_attachments').insert({
+              id: uniqueId,
+              student_id: studentId,
+              file_name: file.name,
+              file_size: fileSizeFormatted,
+              file_bytes: file.size,
+              mime_type: file.type || 'application/octet-stream',
+              storage_path: storagePath,
+              file_data: payloadData,
+              created_at: nowIso,
+            });
+            if (insertError && !storageUploadSuccess) {
+              throw new Error(`파일 메타데이터 저장 실패: ${insertError.message}`);
+            }
+          }
+        } catch (dbErr: any) {
+          console.error('Database record save error:', dbErr);
+          if (!storageUploadSuccess) {
+            throw new Error(`서버 저장 실패: ${dbErr?.message || '알 수 없는 오류'}`);
+          }
+        }
+      }
+    }
+
+    onProgress?.(90);
+
+    const newAttachment: StudentAttachment = {
+      id: uniqueId,
+      studentId,
+      fileName: file.name,
+      fileSize: fileSizeFormatted,
+      fileBytes: file.size,
+      mimeType: file.type || 'application/octet-stream',
+      storagePath,
+      dataUrl,
+      thumbnailUrl,
+      uploadedAt: dateFormatted,
+    };
+
+    // 4. 로컬 IndexedDB 캐시 업데이트
+    const db = await this.getDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(studentId);
+      getReq.onsuccess = () => {
+        const student = getReq.result as Student | undefined;
+        if (student) {
+          student.attachments = [newAttachment, ...(student.attachments || [])];
+          store.put(student);
+          resolve();
+        } else {
+          resolve();
+        }
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+
+    onProgress?.(100);
+    return newAttachment;
+  }
+
+  async deleteStudentAttachment(
+    studentId: string,
+    attachmentId: string,
+    storagePath?: string
+  ): Promise<boolean> {
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          const { data, error } = await client.rpc('delete_student_attachment_secure', {
+            p_attachment_id: attachmentId,
+          });
+          const pathToDelete = data?.storage_path || storagePath;
+          if (pathToDelete) {
+            try {
+              await client.storage.from('student-files').remove([pathToDelete]);
+            } catch {
+              // ignore
+            }
+          }
+          if (error) {
+            await client.from('student_attachments').delete().eq('id', attachmentId);
+            if (storagePath) {
+              await client.storage.from('student-files').remove([storagePath]);
+            }
+          }
+        } catch (e) {
+          console.warn('Remote deleteStudentAttachment warning:', e);
+        }
+      }
+    }
+
+    // 로컬 IndexedDB 반영
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(studentId);
+      getReq.onsuccess = () => {
+        const student = getReq.result as Student | undefined;
+        if (student && student.attachments) {
+          student.attachments = student.attachments.filter((a) => a.id !== attachmentId);
+          store.put(student);
+          resolve(true);
+        } else {
+          resolve(true);
+        }
+      };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  async getAttachmentDownloadUrl(attachment: StudentAttachment): Promise<string> {
+    if (attachment.dataUrl && (attachment.dataUrl.startsWith('data:') || attachment.dataUrl.startsWith('blob:'))) {
+      return attachment.dataUrl;
+    }
+
+    if (isSupabaseConfigured() && attachment.storagePath) {
+      const client = getSupabase();
+      if (client) {
+        try {
+          // 1. Signed URL 생성 시도 (1시간 유효)
+          const { data: signData, error: signError } = await client.storage
+            .from('student-files')
+            .createSignedUrl(attachment.storagePath, 3600);
+          if (!signError && signData?.signedUrl) {
+            return signData.signedUrl;
+          }
+
+          // 2. 직접 바이너리 다운로드 시도
+          const { data: blobData, error: downloadError } = await client.storage
+            .from('student-files')
+            .download(attachment.storagePath);
+          if (!downloadError && blobData) {
+            return URL.createObjectURL(blobData);
+          }
+        } catch (err) {
+          console.warn('Storage download failed, falling back to DB RPC:', err);
+        }
+
+        // 3. DB RPC 폴백
+        try {
+          const { data: rpcData, error: rpcError } = await client.rpc('get_student_attachment_secure', {
+            p_attachment_id: attachment.id,
+          });
+          if (!rpcError && rpcData?.attachment?.file_data) {
+            return rpcData.attachment.file_data;
+          }
+        } catch (rpcErr) {
+          console.warn('RPC fetch failed:', rpcErr);
+        }
+      }
+    }
+
+    if (attachment.dataUrl) return attachment.dataUrl;
+    throw new Error('파일 데이터를 불러올 수 없습니다.');
+  }
+
+  async downloadStudentAttachment(attachment: StudentAttachment): Promise<void> {
+    const url = await this.getAttachmentDownloadUrl(attachment);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = attachment.fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  // ==========================================
   // Students & Records
   // ==========================================
   async getAllStudents(): Promise<Student[]> {
@@ -338,9 +623,29 @@ class LocalArchiveStorage {
               throw rError;
             }
 
+            // 학생별 첨부파일 조회 (테이블이 아직 생성되지 않은 경우 예외 방어)
+            let attachmentsData: any[] = [];
+            try {
+              const { data: aData, error: aError } = await client
+                .from('student_attachments')
+                .select('*')
+                .order('created_at', { ascending: false });
+              if (!aError && Array.isArray(aData)) {
+                attachmentsData = aData;
+              }
+            } catch (aErr) {
+              console.warn('student_attachments fetch warning (migration may be pending):', aErr);
+            }
+
+            // 기존 로컬 캐시 확인 (첨부파일 캐시 보존용)
+            const localCachedList = await this.getLocalStudentsOnly().catch(() => []);
+            const localCacheMap = new Map<string, Student>();
+            localCachedList.forEach((s) => localCacheMap.set(s.id, s));
+
             // Supabase에 데이터가 있으면 안전하게 결합하여 반환
             if (studentsData.length > 0) {
               const combined: Student[] = studentsData.map((s) => {
+                const localStudent = localCacheMap.get(s.id);
                 const studentRecords = (recordsData || [])
                   .filter((r) => r.student_id === s.id)
                   .map((r) => ({
@@ -351,6 +656,40 @@ class LocalArchiveStorage {
                     content: r.content,
                     pdfs: Array.isArray(r.pdfs) ? r.pdfs : [],
                   }));
+
+                // DB에서 불러온 첨부파일
+                const remoteAttachments: StudentAttachment[] = attachmentsData
+                  .filter((a) => a.student_id === s.id)
+                  .map((a) => {
+                    const localAtt = (localStudent?.attachments || []).find((la) => la.id === a.id);
+                    return {
+                      id: a.id,
+                      studentId: a.student_id,
+                      fileName: a.file_name,
+                      fileSize: a.file_size,
+                      fileBytes: Number(a.file_bytes) || 0,
+                      mimeType: a.mime_type,
+                      storagePath: a.storage_path,
+                      dataUrl: a.file_data || localAtt?.dataUrl || '',
+                      thumbnailUrl: localAtt?.thumbnailUrl,
+                      uploadedAt: a.created_at
+                        ? new Date(a.created_at)
+                            .toLocaleDateString('ko-KR', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                            })
+                            .replace(/\. /g, '.')
+                            .replace(/\.$/, '')
+                        : localAtt?.uploadedAt || '',
+                    };
+                  });
+
+                // 원격 데이터가 없으면 로컬 캐시 첨부파일 유지
+                const finalAttachments =
+                  remoteAttachments.length > 0
+                    ? remoteAttachments
+                    : localStudent?.attachments || [];
 
                 return {
                   id: s.id,
@@ -366,6 +705,7 @@ class LocalArchiveStorage {
                   major2: s.major2 || '',
                   memo: s.memo || '',
                   records: studentRecords,
+                  attachments: finalAttachments,
                 };
               });
 

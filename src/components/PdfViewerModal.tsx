@@ -20,11 +20,29 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const badge = getFileBadgeInfo(pdf.fileName);
 
   // Real download handler
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (pdf.dataUrl) {
+      if (pdf.dataUrl.startsWith('http://') || pdf.dataUrl.startsWith('https://')) {
+        try {
+          const resp = await fetch(pdf.dataUrl);
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = pdf.fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+          return;
+        } catch {
+          // fallback to direct link
+        }
+      }
       const a = document.createElement('a');
       a.href = pdf.dataUrl;
       a.download = pdf.fileName;
+      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -45,7 +63,12 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     }
   };
 
-  const hasRealPdfData = cat === 'pdf' && !!pdf.dataUrl && pdf.dataUrl.startsWith('data:application/pdf');
+  const hasRealPdfData =
+    cat === 'pdf' &&
+    !!pdf.dataUrl &&
+    (pdf.dataUrl.startsWith('data:application/pdf') ||
+      pdf.dataUrl.startsWith('blob:') ||
+      pdf.dataUrl.includes('.pdf'));
 
   return (
     <div

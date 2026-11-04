@@ -1,7 +1,20 @@
-import React from 'react';
-import { Plus, Trash2, Edit2 } from 'lucide-react';
-import { Student, CounselingRecord, PdfAttachment } from '../types';
+import React, { useState, useRef } from 'react';
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  Paperclip,
+  Eye,
+  Download,
+  Loader2,
+  UploadCloud,
+  X,
+  AlertCircle,
+} from 'lucide-react';
+import { Student, CounselingRecord, PdfAttachment, StudentAttachment } from '../types';
 import { RecordCard } from './RecordCard';
+import { archiveStorage, isSupportedAttachment } from '../services/storage';
+import { getFileCategory, getFileBadgeInfo } from '../utils/pdfThumbnail';
 
 interface PadletColumnProps {
   student: Student;
@@ -12,6 +25,7 @@ interface PadletColumnProps {
   onEditStudent: (student: Student) => void;
   onDeleteStudent: (studentId: string) => void;
   onOpenPdf: (pdf: PdfAttachment, studentName: string) => void;
+  onUpdateAttachments?: (studentId: string, attachments: StudentAttachment[]) => void;
 }
 
 export const PadletColumn: React.FC<PadletColumnProps> = ({
@@ -23,7 +37,15 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
   onEditStudent,
   onDeleteStudent,
   onOpenPdf,
+  onUpdateAttachments,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
   // Check if student has '수강포기' anywhere in records or memo
   const isDropped =
     student.records.some((record) => {
@@ -31,14 +53,168 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
       return combined.includes('수강포기');
     }) || (student.memo || '').replace(/\s+/g, '').includes('수강포기');
 
+  // Handle Multi-file Upload
+  const handleUploadFiles = async (files: File[]) => {
+    if (!isAdmin || files.length === 0) return;
+    setErrorMessage(null);
+
+    // 1. Validate formats
+    const invalidFiles = files.filter((f) => !isSupportedAttachment(f.name));
+    if (invalidFiles.length > 0) {
+      setErrorMessage(
+        `지원하지 않는 파일 형식입니다: ${invalidFiles.map((f) => f.name).join(', ')} (지원 형식: PDF, HWP, HWPX, PNG, JPG, DOC, DOCX)`
+      );
+      return;
+    }
+
+    setIsUploading(true);
+    const uploadedAttachments: StudentAttachment[] = [];
+    const errors: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgressText(`업로드 중... (${i + 1}/${files.length}) ${file.name}`);
+      try {
+        const att = await archiveStorage.uploadStudentAttachment(student.id, file);
+        uploadedAttachments.push(att);
+      } catch (err: any) {
+        console.error(`Failed to upload ${file.name}:`, err);
+        errors.push(`${file.name}: ${err.message || '업로드 실패'}`);
+      }
+    }
+
+    setIsUploading(false);
+    setUploadProgressText('');
+
+    if (errors.length > 0) {
+      setErrorMessage(`일부 파일 업로드 실패:\n${errors.join('\n')}`);
+    }
+
+    if (uploadedAttachments.length > 0) {
+      const currentList = student.attachments || [];
+      const updatedList = [...uploadedAttachments, ...currentList];
+      onUpdateAttachments?.(student.id, updatedList);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleUploadFiles(Array.from(e.target.files));
+    }
+  };
+
+  // Drag & Drop handlers on Card
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!isAdmin) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDraggingOver) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!isAdmin) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Only unset if leaving card bounds
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!isAdmin) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUploadFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+
+  // Preview handler (PDF, Image)
+  const handlePreview = async (att: StudentAttachment) => {
+    try {
+      let dataUrl = att.dataUrl;
+      if (!dataUrl) {
+        dataUrl = await archiveStorage.getAttachmentDownloadUrl(att);
+      }
+      onOpenPdf(
+        {
+          id: att.id,
+          fileName: att.fileName,
+          fileSize: att.fileSize,
+          uploadedAt: att.uploadedAt,
+          dataUrl: dataUrl || '',
+          thumbnailUrl: att.thumbnailUrl,
+        },
+        student.name
+      );
+    } catch (err: any) {
+      alert(`파일 미리보기를 불러올 수 없습니다: ${err?.message || ''}`);
+    }
+  };
+
+  // Download handler (All file types)
+  const handleDownload = async (att: StudentAttachment) => {
+    try {
+      setDownloadingId(att.id);
+      await archiveStorage.downloadStudentAttachment(att);
+    } catch (err: any) {
+      alert(`다운로드 실패: ${err?.message || '네트워크 오류'}`);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  // Delete handler (Admin only)
+  const handleDeleteAttachment = async (attachmentId: string, fileName: string, storagePath?: string) => {
+    if (!isAdmin) return;
+    if (!confirm(`'${fileName}' 첨부파일을 삭제하시겠습니까?`)) return;
+
+    try {
+      await archiveStorage.deleteStudentAttachment(student.id, attachmentId, storagePath);
+      const updatedList = (student.attachments || []).filter((a) => a.id !== attachmentId);
+      onUpdateAttachments?.(student.id, updatedList);
+    } catch (err: any) {
+      alert(`첨부파일 삭제 실패: ${err?.message || ''}`);
+    }
+  };
+
+  const attachments = student.attachments || [];
+
   return (
     <div
-      className={`w-full rounded-2xl transition-all ${
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`relative w-full rounded-2xl transition-all ${
         isDropped
           ? 'bg-slate-100/95 backdrop-blur-md border border-slate-300 shadow-2xs hover:shadow-xs hover:border-slate-400'
           : 'bg-white/80 backdrop-blur-md border border-sky-100/90 shadow-2xs hover:shadow-xs hover:border-teal-300'
-      }`}
+      } ${isDraggingOver ? 'ring-2 ring-teal-500 border-teal-500 scale-[1.01]' : ''}`}
     >
+      {/* Drag & Drop Visual Overlay (Admin Only) */}
+      {isDraggingOver && isAdmin && (
+        <div className="absolute inset-0 z-30 bg-teal-600/10 border-2 border-dashed border-teal-500 rounded-2xl flex flex-col items-center justify-center p-4 backdrop-blur-[2px] pointer-events-none animate-in fade-in duration-150">
+          <div className="p-3 bg-white text-teal-700 rounded-2xl shadow-lg border border-teal-200 flex items-center space-x-2.5">
+            <UploadCloud className="w-6 h-6 text-teal-600 animate-bounce" />
+            <div className="text-left">
+              <p className="text-xs font-bold text-slate-800">
+                {student.name} 학생에게 파일 놓기
+              </p>
+              <p className="text-[10px] text-teal-600">
+                놓으면 자동으로 첨부됩니다 (PDF, HWP, Word, 이미지)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Column Header: Student Name + Cohort + Academic & Contact Info */}
       <div
         className={`p-4 pb-3 border-b rounded-t-2xl transition-colors ${
@@ -67,7 +243,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
             >
               {student.name}
             </h3>
-            
+
             {/* Cohort Badge */}
             <span
               className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
@@ -92,7 +268,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
             <div className="flex items-center space-x-1 shrink-0">
               <button
                 onClick={() => onEditStudent(student)}
-                className="text-slate-300 hover:text-teal-600 p-1 rounded-md transition-colors"
+                className="text-slate-300 hover:text-teal-600 p-1 rounded-md transition-colors cursor-pointer"
                 title="학생 정보 수정"
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -103,7 +279,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
                     onDeleteStudent(student.id);
                   }
                 }}
-                className="text-slate-300 hover:text-rose-500 p-1 rounded-md transition-colors"
+                className="text-slate-300 hover:text-rose-500 p-1 rounded-md transition-colors cursor-pointer"
                 title="학생 삭제"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -169,7 +345,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         )}
       </div>
 
-      {/* Quick Add Button directly under student header (Admin only) */}
+      {/* 1. Quick Add Record Button directly under student header (Admin only) */}
       {isAdmin && (
         <div className="px-3.5 pt-3">
           <button
@@ -187,7 +363,180 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         </div>
       )}
 
-      {/* Vertical Stack of Records: No inner scrollbar, auto height */}
+      {/* 2. File Attachment Button & File List directly below '기록 추가' */}
+      <div className="px-3.5 pt-2">
+        {/* Hidden File Input for Multiple Uploads */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".pdf,.hwp,.hwpx,.png,.jpg,.jpeg,.webp,.doc,.docx"
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
+
+        {/* '파일 첨부' Button (Admin Only) */}
+        {isAdmin && (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className={`w-full py-1.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all shadow-2xs active:scale-[0.99] cursor-pointer ${
+              isUploading
+                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                : isDropped
+                ? 'border-slate-300 hover:border-slate-400 bg-white/70 hover:bg-slate-100 text-slate-700'
+                : 'border-sky-200 hover:border-teal-400 bg-white/90 hover:bg-teal-50/70 text-slate-700 hover:text-teal-700'
+            }`}
+            title="PDF, HWP, HWPX, Word, 이미지 파일 첨부 (다중 선택 및 드래그앤드롭 가능)"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
+                <span className="truncate">{uploadProgressText || '업로드 중...'}</span>
+              </>
+            ) : (
+              <>
+                <Paperclip className="w-3.5 h-3.5 text-teal-600" />
+                <span>파일 첨부</span>
+                <span className="text-[10px] text-slate-400 font-normal">
+                  (PDF·HWP·워드·이미지)
+                </span>
+              </>
+            )}
+          </button>
+        )}
+
+        {/* Error Cause Banner */}
+        {errorMessage && (
+          <div className="mt-2 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start justify-between space-x-1.5 animate-in fade-in duration-150">
+            <div className="flex items-start space-x-1.5 overflow-hidden">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+              <span className="text-[11px] leading-tight whitespace-pre-line truncate">
+                {errorMessage}
+              </span>
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-rose-400 hover:text-rose-700 shrink-0 p-0.5 cursor-pointer"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
+        {/* Attached Files List Container */}
+        {attachments.length > 0 && (
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-slate-500">
+              <span className="flex items-center space-x-1">
+                <Paperclip className="w-3 h-3 text-teal-600" />
+                <span>첨부파일</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600 font-mono">
+                  {attachments.length}
+                </span>
+              </span>
+              {isAdmin && (
+                <span className="text-[10px] text-slate-400 font-normal">
+                  드래그하여 추가 가능
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              {attachments.map((att) => {
+                const cat = getFileCategory(att.fileName);
+                const badge = getFileBadgeInfo(att.fileName);
+                const isPreviewable = cat === 'pdf' || cat === 'image';
+                const isItemDownloading = downloadingId === att.id;
+
+                return (
+                  <div
+                    key={att.id}
+                    className="group px-2.5 py-1.5 rounded-lg bg-slate-50/90 hover:bg-teal-50/50 border border-slate-200/80 hover:border-teal-200 flex items-center justify-between transition-colors text-xs"
+                  >
+                    {/* Left: Badge + File Name + Size & Date */}
+                    <div
+                      className="flex items-center space-x-2 min-w-0 flex-1 mr-2 cursor-pointer"
+                      onClick={() => {
+                        if (isPreviewable) {
+                          handlePreview(att);
+                        } else {
+                          handleDownload(att);
+                        }
+                      }}
+                      title={
+                        isPreviewable
+                          ? `${att.fileName} (클릭하여 미리보기)`
+                          : `${att.fileName} (클릭하여 다운로드)`
+                      }
+                    >
+                      {/* Format Badge */}
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${badge.bg} ${badge.text} ${badge.border}`}
+                      >
+                        {badge.label}
+                      </span>
+
+                      {/* File Info */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-slate-700 group-hover:text-teal-700 font-medium truncate text-[11px] leading-tight">
+                          {att.fileName}
+                        </p>
+                        <p className="text-[10px] text-slate-400 leading-tight">
+                          {att.fileSize} · {att.uploadedAt}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center space-x-0.5 shrink-0">
+                      {/* Preview Button (PDF / Image only) */}
+                      {isPreviewable && (
+                        <button
+                          onClick={() => handlePreview(att)}
+                          className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-100/60 transition-colors cursor-pointer"
+                          title="미리보기"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
+                      {/* Download Button (All Formats) */}
+                      <button
+                        onClick={() => handleDownload(att)}
+                        disabled={isItemDownloading}
+                        className="p-1 rounded text-slate-400 hover:text-teal-700 hover:bg-teal-100/60 transition-colors cursor-pointer"
+                        title="다운로드"
+                      >
+                        {isItemDownloading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+
+                      {/* Delete Button (Admin Only) */}
+                      {isAdmin && (
+                        <button
+                          onClick={() =>
+                            handleDeleteAttachment(att.id, att.fileName, att.storagePath)
+                          }
+                          className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="첨부파일 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Vertical Stack of Records: No inner scrollbar, auto height */}
       <div className="p-3.5 space-y-3">
         {student.records.length > 0 ? (
           student.records.map((record) => (
@@ -215,7 +564,6 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
           </div>
         )}
       </div>
-
     </div>
   );
 };
