@@ -67,132 +67,197 @@ export function getFileBadgeInfo(fileName: string): {
   }
 }
 
-// Generate thumbnail for Word documents
-export function generateWordThumbnailUrl(fileName: string): string {
+// Generate realistic first-page preview thumbnail for Word documents
+export function generateWordThumbnailUrl(fileName: string, studentName?: string): string {
   const canvas = document.createElement('canvas');
-  canvas.width = 300;
-  canvas.height = 400;
+  canvas.width = 600;
+  canvas.height = 800;
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // Background
+  const cleanTitle = fileName.replace(/\.[^/.]+$/, '');
+
+  // 1. Paper Background (A4 Crisp White)
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, 300, 400);
+  ctx.fillRect(0, 0, 600, 800);
 
-  // Border
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0, 0, 300, 400);
+  // Paper Border
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(0, 0, 600, 800);
 
-  // Header band (Word Blue)
+  // 2. Word Header Stripe (Deep Blue)
   ctx.fillStyle = '#2b579a';
-  ctx.fillRect(0, 0, 300, 56);
-
-  // Header Title
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px Pretendard, sans-serif';
-  ctx.fillText('MICROSOFT WORD', 16, 34);
-
-  // Big 'W' Icon
-  ctx.fillStyle = '#2b579a';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(100, 100, 100, 100, 16);
-  } else {
-    ctx.rect(100, 100, 100, 100);
-  }
-  ctx.fill();
+  ctx.fillRect(0, 0, 600, 50);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 56px Pretendard, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('W', 150, 172);
+  ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('W  MICROSOFT WORD DOCUMENT', 30, 32);
 
-  // Document Title
+  ctx.fillStyle = '#93c5fd';
+  ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('Page 1 of Document', 570, 32);
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#1e293b';
-  ctx.font = 'bold 13px Pretendard, sans-serif';
-  const displayTitle = fileName.length > 22 ? fileName.substring(0, 22) + '...' : fileName;
-  ctx.fillText(displayTitle, 20, 250);
 
-  // Simulated lines
-  ctx.fillStyle = '#e2e8f0';
-  for (let i = 0; i < 4; i++) {
-    ctx.fillRect(20, 275 + i * 16, i % 2 === 0 ? 260 : 200, 6);
+  // 3. Document Title Area (Top of Page 1)
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  const displayTitle = cleanTitle.length > 22 ? cleanTitle.substring(0, 22) + '...' : cleanTitle;
+  ctx.fillText(displayTitle, 40, 110);
+
+  // Subtitle / Student meta
+  ctx.fillStyle = '#64748b';
+  ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText(`작성자: ${studentName || '지원자'}  |  취업지원 첨삭 서류  |  등록일: 1페이지`, 40, 140);
+
+  // Divider
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(40, 160);
+  ctx.lineTo(560, 160);
+  ctx.stroke();
+
+  // 4. Section 1 Box: Personal & Objective
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(40, 185, 520, 60);
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(40, 185, 520, 60);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('■ 1. 직무 지원 동기 및 핵심 역량 요약', 55, 215);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('금융 IT 및 데이터 분석 역량을 기반으로 프로젝트 성과를 도출한 경험 기술', 55, 235);
+
+  // 5. Simulated Body Paragraphs
+  const lineYStart = 275;
+  for (let i = 0; i < 14; i++) {
+    const y = lineYStart + i * 26;
+    if (i === 5) {
+      // Mid-section header
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+      ctx.fillText('■ 2. 주요 프로젝트 수행 경험 및 역할 분석', 40, y + 10);
+      continue;
+    }
+    const width = (i % 3 === 0) ? 460 : (i % 2 === 0) ? 520 : 490;
+    ctx.fillStyle = (i % 4 === 1) ? '#94a3b8' : '#cbd5e1';
+    ctx.fillRect(40, y, width, 10);
   }
 
-  // Footer badge
-  ctx.fillStyle = '#f1f5f9';
-  ctx.fillRect(20, 350, 260, 26);
-  ctx.fillStyle = '#2b579a';
-  ctx.font = 'bold 10px Pretendard, sans-serif';
-  ctx.fillText('WORD DOCUMENT (.DOC / .DOCX)', 30, 367);
+  // 6. Security & Preview Watermark Band at Bottom
+  ctx.fillStyle = '#eff6ff';
+  ctx.fillRect(40, 720, 520, 45);
+  ctx.strokeStyle = '#bfdbfe';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(40, 720, 520, 45);
 
-  return canvas.toDataURL('image/jpeg', 0.85);
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('🔒 CAREER ARCHIVE DOCUMENT PREVIEW · 화면 내 열람 전용', 55, 748);
+
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
-// Generate thumbnail for Hancom HWP documents
-export function generateHwpThumbnailUrl(fileName: string): string {
+// Generate realistic first-page preview thumbnail for Hancom HWP documents
+export function generateHwpThumbnailUrl(fileName: string, studentName?: string): string {
   const canvas = document.createElement('canvas');
-  canvas.width = 300;
-  canvas.height = 400;
+  canvas.width = 600;
+  canvas.height = 800;
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
-  // Background
+  const cleanTitle = fileName.replace(/\.[^/.]+$/, '');
+
+  // 1. Paper Background
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, 300, 400);
+  ctx.fillRect(0, 0, 600, 800);
 
-  // Border
-  ctx.strokeStyle = '#cbd5e1';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0, 0, 300, 400);
+  // Paper Border
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(0, 0, 600, 800);
 
-  // Header band (Hancom Cyan/Blue)
-  ctx.fillStyle = '#0078d4';
-  ctx.fillRect(0, 0, 300, 56);
-
-  // Header Title
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px Pretendard, sans-serif';
-  ctx.fillText('한글과컴퓨터 HWP', 16, 34);
-
-  // Big '한' Icon
-  ctx.fillStyle = '#0078d4';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(100, 100, 100, 100, 16);
-  } else {
-    ctx.rect(100, 100, 100, 100);
-  }
-  ctx.fill();
+  // 2. Hancom Header Stripe (Cyan / Sky Blue)
+  ctx.fillStyle = '#0284c7';
+  ctx.fillRect(0, 0, 600, 50);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 50px Pretendard, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('한', 150, 170);
+  ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('한  한글과컴퓨터 HWP / HWPX DOCUMENT', 30, 32);
 
-  // Document Title
+  ctx.fillStyle = '#bae6fd';
+  ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('Page 1 of Document', 570, 32);
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#1e293b';
-  ctx.font = 'bold 13px Pretendard, sans-serif';
-  const displayTitle = fileName.length > 22 ? fileName.substring(0, 22) + '...' : fileName;
-  ctx.fillText(displayTitle, 20, 250);
 
-  // Simulated lines
-  ctx.fillStyle = '#e2e8f0';
-  for (let i = 0; i < 4; i++) {
-    ctx.fillRect(20, 275 + i * 16, i % 2 === 0 ? 260 : 200, 6);
+  // 3. Document Title Area
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  const displayTitle = cleanTitle.length > 22 ? cleanTitle.substring(0, 22) + '...' : cleanTitle;
+  ctx.fillText(displayTitle, 40, 110);
+
+  // Subtitle / Student meta
+  ctx.fillStyle = '#64748b';
+  ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText(`작성자: ${studentName || '지원자'}  |  한글 서식 첨삭 문서  |  등록일: 1페이지`, 40, 140);
+
+  // Divider
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(40, 160);
+  ctx.lineTo(560, 160);
+  ctx.stroke();
+
+  // 4. Section 1 Box (Hancom Table format)
+  ctx.fillStyle = '#f0f9ff';
+  ctx.fillRect(40, 185, 520, 60);
+  ctx.strokeStyle = '#bae6fd';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(40, 185, 520, 60);
+
+  ctx.fillStyle = '#0369a1';
+  ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('【 지원 서류 및 자기소개서 내용 】', 55, 215);
+
+  ctx.fillStyle = '#475569';
+  ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('입사지원서 및 직무수행계획서 첫 페이지 내용 요약', 55, 235);
+
+  // 5. Simulated Body Paragraphs
+  const lineYStart = 275;
+  for (let i = 0; i < 14; i++) {
+    const y = lineYStart + i * 26;
+    if (i === 5) {
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+      ctx.fillText('【 직무 관련 자격 및 수료 프로젝트 】', 40, y + 10);
+      continue;
+    }
+    const width = (i % 3 === 0) ? 470 : (i % 2 === 0) ? 520 : 490;
+    ctx.fillStyle = (i % 4 === 1) ? '#94a3b8' : '#cbd5e1';
+    ctx.fillRect(40, y, width, 10);
   }
 
-  // Footer badge
-  ctx.fillStyle = '#f0f9ff';
-  ctx.fillRect(20, 350, 260, 26);
-  ctx.fillStyle = '#0078d4';
-  ctx.font = 'bold 10px Pretendard, sans-serif';
-  ctx.fillText('HANCOM DOCUMENT (.HWP / .HWPX)', 30, 367);
+  // 6. Security & Preview Watermark Band at Bottom
+  ctx.fillStyle = '#f0fdf4';
+  ctx.fillRect(40, 720, 520, 45);
+  ctx.strokeStyle = '#bbf7d0';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(40, 720, 520, 45);
 
-  return canvas.toDataURL('image/jpeg', 0.85);
+  ctx.fillStyle = '#15803d';
+  ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif';
+  ctx.fillText('🔒 CAREER ARCHIVE DOCUMENT PREVIEW · 화면 내 열람 전용', 55, 748);
+
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
 
 // Generate fallback visual thumbnail for sample/mock PDFs

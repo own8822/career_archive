@@ -4,17 +4,17 @@ import {
   Trash2,
   Edit2,
   Paperclip,
-  Eye,
   Download,
   Loader2,
   UploadCloud,
   X,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { Student, CounselingRecord, PdfAttachment, StudentAttachment } from '../types';
 import { RecordCard } from './RecordCard';
 import { archiveStorage, isSupportedAttachment } from '../services/storage';
-import { getFileCategory, getFileBadgeInfo } from '../utils/pdfThumbnail';
+import { getFileBadgeInfo } from '../utils/pdfThumbnail';
 
 interface PadletColumnProps {
   student: Student;
@@ -159,8 +159,12 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
     }
   };
 
-  // Download handler (All file types)
+  // Download handler (Admin Only)
   const handleDownload = async (att: StudentAttachment) => {
+    if (!isAdmin) {
+      alert('열람자 권한에서는 보안 정책상 원본 파일 다운로드가 허용되지 않습니다.');
+      return;
+    }
     try {
       setDownloadingId(att.id);
       await archiveStorage.downloadStudentAttachment(att);
@@ -426,107 +430,121 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
 
         {/* Attached Files List Container */}
         {attachments.length > 0 && (
-          <div className="mt-2 space-y-1">
+          <div className="mt-2.5 space-y-2">
             <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-slate-500">
               <span className="flex items-center space-x-1">
                 <Paperclip className="w-3 h-3 text-teal-600" />
-                <span>첨부파일</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 text-slate-600 font-mono">
-                  {attachments.length}
-                </span>
+                <span>첨부파일 ({attachments.length})</span>
               </span>
-              {isAdmin && (
+              {isAdmin ? (
                 <span className="text-[10px] text-slate-400 font-normal">
-                  드래그하여 추가 가능
+                  드래그하여 추가
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-normal">
+                  클릭 시 화면 내 미리보기
                 </span>
               )}
             </div>
 
-            <div className="space-y-1">
+            {/* List of Thumbnail Cards (Width: w-full, Height: h-14 = 56px approx 48~64px) */}
+            <div className="space-y-2">
               {attachments.map((att) => {
-                const cat = getFileCategory(att.fileName);
                 const badge = getFileBadgeInfo(att.fileName);
-                const isPreviewable = cat === 'pdf' || cat === 'image';
                 const isItemDownloading = downloadingId === att.id;
+                const thumbSrc =
+                  att.thumbnailUrl ||
+                  (att.dataUrl && !att.dataUrl.startsWith('data:application/pdf')
+                    ? att.dataUrl
+                    : undefined);
 
                 return (
                   <div
                     key={att.id}
-                    className="group px-2.5 py-1.5 rounded-lg bg-slate-50/90 hover:bg-teal-50/50 border border-slate-200/80 hover:border-teal-200 flex items-center justify-between transition-colors text-xs"
+                    className="group relative w-full rounded-xl border border-slate-200/90 hover:border-teal-400 bg-white overflow-hidden transition-all shadow-2xs hover:shadow-xs"
                   >
-                    {/* Left: Badge + File Name + Size & Date */}
+                    {/* 1. Thumbnail Container (w-full, height: 56px approx 48~64px) */}
                     <div
-                      className="flex items-center space-x-2 min-w-0 flex-1 mr-2 cursor-pointer"
-                      onClick={() => {
-                        if (isPreviewable) {
-                          handlePreview(att);
-                        } else {
-                          handleDownload(att);
-                        }
-                      }}
-                      title={
-                        isPreviewable
-                          ? `${att.fileName} (클릭하여 미리보기)`
-                          : `${att.fileName} (클릭하여 다운로드)`
-                      }
+                      onClick={() => handlePreview(att)}
+                      className="relative w-full h-14 bg-gradient-to-b from-slate-100 to-slate-200/60 overflow-hidden cursor-pointer flex items-start justify-center border-b border-slate-100"
+                      title={`${att.fileName} (클릭하여 크게 미리보기)`}
                     >
-                      {/* Format Badge */}
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${badge.bg} ${badge.text} ${badge.border}`}
-                      >
-                        {badge.label}
-                      </span>
+                      {thumbSrc ? (
+                        <img
+                          src={thumbSrc}
+                          alt={att.fileName}
+                          className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        /* Document page placeholder with title */
+                        <div className="w-full h-full p-2 bg-slate-50 flex flex-col justify-center text-left">
+                          <div className="flex items-center space-x-1 text-slate-500 mb-0.5">
+                            <FileText className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            <span className="text-[10px] font-mono text-slate-500 truncate">
+                              문서 첫 페이지
+                            </span>
+                          </div>
+                          <div className="w-3/4 h-1.5 bg-slate-200 rounded-sm mb-1"></div>
+                          <div className="w-1/2 h-1.5 bg-slate-200 rounded-sm"></div>
+                        </div>
+                      )}
 
-                      {/* File Info */}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-slate-700 group-hover:text-teal-700 font-medium truncate text-[11px] leading-tight">
-                          {att.fileName}
-                        </p>
-                        <p className="text-[10px] text-slate-400 leading-tight">
-                          {att.fileSize} · {att.uploadedAt}
-                        </p>
+                      {/* Format Badge Overlay (Top-Left) */}
+                      <div className="absolute top-1.5 left-1.5 pointer-events-none">
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-2xs border backdrop-blur-md ${badge.bg} ${badge.text} ${badge.border}`}
+                        >
+                          {badge.label}
+                        </span>
                       </div>
+
+                      {/* Admin Only Controls Overlay (Top-Right): Download & Delete */}
+                      {isAdmin && (
+                        <div className="absolute top-1 right-1 flex items-center space-x-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(att);
+                            }}
+                            disabled={isItemDownloading}
+                            className="p-1 rounded bg-black/60 hover:bg-black/85 text-white transition-colors cursor-pointer shadow-xs"
+                            title="원본 다운로드 (관리자 전용)"
+                          >
+                            {isItemDownloading ? (
+                              <Loader2 className="w-3 h-3 animate-spin text-teal-300" />
+                            ) : (
+                              <Download className="w-3 h-3" />
+                            )}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAttachment(att.id, att.fileName, att.storagePath);
+                            }}
+                            className="p-1 rounded bg-black/60 hover:bg-rose-600 text-white transition-colors cursor-pointer shadow-xs"
+                            title="파일 삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Right: Actions */}
-                    <div className="flex items-center space-x-0.5 shrink-0">
-                      {/* Preview Button (PDF / Image only) */}
-                      {isPreviewable && (
-                        <button
-                          onClick={() => handlePreview(att)}
-                          className="p-1 rounded text-slate-400 hover:text-teal-600 hover:bg-teal-100/60 transition-colors cursor-pointer"
-                          title="미리보기"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      {/* Download Button (All Formats) */}
-                      <button
-                        onClick={() => handleDownload(att)}
-                        disabled={isItemDownloading}
-                        className="p-1 rounded text-slate-400 hover:text-teal-700 hover:bg-teal-100/60 transition-colors cursor-pointer"
-                        title="다운로드"
+                    {/* 2. File Name & Details directly below thumbnail */}
+                    <div
+                      onClick={() => handlePreview(att)}
+                      className="p-2 bg-white cursor-pointer hover:bg-slate-50/70 transition-colors"
+                    >
+                      <p
+                        className="text-[11px] font-bold text-slate-800 group-hover:text-teal-700 truncate leading-snug"
+                        title={att.fileName}
                       >
-                        {isItemDownloading ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-600" />
-                        ) : (
-                          <Download className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-
-                      {/* Delete Button (Admin Only) */}
-                      {isAdmin && (
-                        <button
-                          onClick={() =>
-                            handleDeleteAttachment(att.id, att.fileName, att.storagePath)
-                          }
-                          className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="첨부파일 삭제"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                        {att.fileName}
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5">
+                        <span>{att.fileSize}</span>
+                        <span>{att.uploadedAt}</span>
+                      </div>
                     </div>
                   </div>
                 );

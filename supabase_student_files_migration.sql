@@ -66,6 +66,8 @@ SET public = false,
     file_size_limit = 26214400;
 
 -- 3. Storage Objects 접근 정책 (RLS)
+-- 관리자는 모든 첨부파일(HWP, Word, PDF, 이미지) 업로드, 조회, 다운로드, 삭제 가능
+-- 열람자는 화면 내 미리보기용(PDF, 이미지) 파일만 조회 가능하며, HWP·Word 원본 파일 다운로드는 원천 차단됨
 DROP POLICY IF EXISTS "admin_upload_student_files" ON storage.objects;
 CREATE POLICY "admin_upload_student_files"
 ON storage.objects FOR INSERT
@@ -87,8 +89,14 @@ TO anon, authenticated
 USING (
     bucket_id = 'student-files'
     AND (
-        public.get_current_session_role() IS NOT NULL
-        OR true
+        public.get_current_session_role() IS NOT DISTINCT FROM 'admin'
+        OR (
+            public.get_current_session_role() = 'viewer'
+            AND (
+                -- 열람자는 화면 내 미리보기가 지원되는 PDF 및 이미지 파일만 조회 가능
+                lower(storage.extension(name)) IN ('pdf', 'png', 'jpg', 'jpeg', 'webp')
+            )
+        )
     )
 );
 

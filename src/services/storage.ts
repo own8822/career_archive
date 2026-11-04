@@ -1,6 +1,6 @@
 import { Student, CounselingRecord, AuthSettings, AccessCodeMeta, StudentAttachment } from '../types';
 import { getSupabase, isSupabaseConfigured, setSessionToken, getSessionToken } from './supabase';
-import { generateAttachmentThumbnail } from '../utils/pdfThumbnail';
+import { generateAttachmentThumbnail, getFileCategory } from '../utils/pdfThumbnail';
 
 export const SUPPORTED_ATTACHMENT_EXTENSIONS = [
   'pdf',
@@ -539,6 +539,20 @@ class LocalArchiveStorage {
   }
 
   async getAttachmentDownloadUrl(attachment: StudentAttachment): Promise<string> {
+    const currentRole = sessionStorage.getItem('career_archive_active_role');
+    const cat = getFileCategory(attachment.fileName);
+
+    // 열람자 권한인 경우: 원본 HWP, HWPX, Word 파일 접근을 차단하고 변환된 미리보기 이미지만 제공
+    if (currentRole === 'viewer') {
+      if (cat === 'word' || cat === 'hwp') {
+        if (attachment.thumbnailUrl) return attachment.thumbnailUrl;
+        if (attachment.dataUrl && !attachment.dataUrl.startsWith('data:application/')) {
+          return attachment.dataUrl;
+        }
+        return attachment.thumbnailUrl || '';
+      }
+    }
+
     if (attachment.dataUrl && (attachment.dataUrl.startsWith('data:') || attachment.dataUrl.startsWith('blob:'))) {
       return attachment.dataUrl;
     }
@@ -580,11 +594,17 @@ class LocalArchiveStorage {
       }
     }
 
+    if (attachment.thumbnailUrl) return attachment.thumbnailUrl;
     if (attachment.dataUrl) return attachment.dataUrl;
     throw new Error('파일 데이터를 불러올 수 없습니다.');
   }
 
   async downloadStudentAttachment(attachment: StudentAttachment): Promise<void> {
+    const currentRole = sessionStorage.getItem('career_archive_active_role');
+    if (currentRole !== 'admin') {
+      throw new Error('열람자 권한에서는 보안 정책상 파일 다운로드가 허용되지 않습니다.');
+    }
+
     const url = await this.getAttachmentDownloadUrl(attachment);
     const a = document.createElement('a');
     a.href = url;

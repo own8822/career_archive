@@ -452,6 +452,7 @@ export const AppContent: React.FC = () => {
       <PdfViewerModal
         pdf={selectedPdf ? selectedPdf.pdf : null}
         studentName={selectedPdf ? selectedPdf.studentName : undefined}
+        isAdmin={isAdmin}
         onClose={() => setSelectedPdf(null)}
       />
     </div>

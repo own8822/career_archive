@@ -79,7 +79,7 @@ export const RecordCard: React.FC<RecordCardProps> = ({
                 </p>
                 <p className="text-[10px] text-slate-400 flex items-center mt-0.5">
                   <Maximize2 className="w-3 h-3 mr-1 text-teal-600" />
-                  클릭하여 열람 및 다운로드
+                  {isAdmin ? '클릭하여 열람 및 다운로드' : '클릭하여 화면 내 열람'}
                 </p>
               </div>
             </div>

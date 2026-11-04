@@ -1,17 +1,19 @@
 import React from 'react';
-import { X, FileText, Download } from 'lucide-react';
+import { X, FileText, Download, Lock } from 'lucide-react';
 import { PdfAttachment } from '../types';
 import { getFileCategory, getFileBadgeInfo } from '../utils/pdfThumbnail';
 
 interface PdfViewerModalProps {
   pdf: PdfAttachment | null;
   studentName?: string;
+  isAdmin?: boolean;
   onClose: () => void;
 }
 
 export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   pdf,
   studentName,
+  isAdmin = false,
   onClose,
 }) => {
   if (!pdf) return null;
@@ -19,8 +21,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const cat = getFileCategory(pdf.fileName);
   const badge = getFileBadgeInfo(pdf.fileName);
 
-  // Real download handler
+  // Real download handler (Admin Only)
   const handleDownload = async () => {
+    if (!isAdmin) {
+      alert('열람자 권한에서는 보안 정책상 원본 파일 다운로드가 허용되지 않습니다.');
+      return;
+    }
+
     if (pdf.dataUrl) {
       if (pdf.dataUrl.startsWith('http://') || pdf.dataUrl.startsWith('https://')) {
         try {
@@ -47,7 +54,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       a.click();
       document.body.removeChild(a);
     } else {
-      // Mock download
+      // Mock download fallback
       const blob = new Blob(
         [`[Document: ${pdf.fileName}]\n학생: ${studentName || ''}\n등록일: ${pdf.uploadedAt}`],
         { type: 'application/octet-stream' }
@@ -92,7 +99,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                     {studentName} 학생
                   </span>
                 )}
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text} ${badge.border}`}>
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text} ${badge.border}`}
+                >
                   {badge.label}
                 </span>
                 <h3 className="text-sm font-semibold text-slate-100 truncate">
@@ -106,20 +115,31 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
-            {/* Download Original File Button */}
-            <button
-              onClick={handleDownload}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors"
-              title="원본 파일 다운로드"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">다운로드</span>
-            </button>
+            {/* Download Original File Button (Admin Only) */}
+            {isAdmin ? (
+              <button
+                onClick={handleDownload}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                title="원본 파일 다운로드"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">다운로드</span>
+              </button>
+            ) : (
+              /* Viewer Mode: View-Only Badge (No download provided) */
+              <div
+                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-[11px]"
+                title="열람자 권한: 화면 내 열람 전용 (다운로드 불가)"
+              >
+                <Lock className="w-3.5 h-3.5 text-teal-400" />
+                <span className="hidden sm:inline">열람 전용</span>
+              </div>
+            )}
 
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors"
+              className="p-2 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
               title="닫기"
             >
               <X className="w-4 h-4" />
@@ -149,15 +169,15 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               </p>
             </div>
           ) : (
-            /* 3. Word, HWP, or Fallback Document View */
-            <div className="bg-white shadow-xl border border-sky-100 rounded-2xl w-full max-w-lg p-6 sm:p-8 flex flex-col items-center text-center text-slate-800">
-              {/* Document Thumbnail Preview */}
-              {pdf.thumbnailUrl && (
-                <div className="mb-4 shadow-md rounded-lg overflow-hidden border border-slate-200">
+            /* 3. Word, HWP, or Document View (First-Page Rendering) */
+            <div className="bg-white shadow-xl border border-sky-100 rounded-2xl w-full max-w-lg p-5 sm:p-7 flex flex-col items-center text-center text-slate-800 max-h-[85vh] overflow-y-auto">
+              {/* Document First-Page Preview */}
+              {(pdf.thumbnailUrl || pdf.dataUrl) && (
+                <div className="mb-4 shadow-md rounded-lg overflow-hidden border border-slate-200 bg-white max-h-[460px]">
                   <img
-                    src={pdf.thumbnailUrl}
-                    alt="Document Thumbnail"
-                    className="w-40 h-52 object-contain bg-white"
+                    src={pdf.thumbnailUrl || pdf.dataUrl}
+                    alt={pdf.fileName}
+                    className="w-full h-auto max-h-[440px] object-contain bg-white"
                   />
                 </div>
               )}
@@ -172,25 +192,31 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                 {pdf.fileSize} · 등록일: {pdf.uploadedAt}
               </p>
 
-              <div className="p-3 bg-sky-50/70 border border-sky-100 rounded-xl text-xs text-slate-600 space-y-1 mb-5 w-full text-left">
+              <div className="p-3 bg-sky-50/70 border border-sky-100 rounded-xl text-xs text-slate-600 space-y-1 mb-4 w-full text-left">
                 <p className="font-semibold text-slate-800">■ 문서 열람 안내</p>
                 <p>학생: {studentName || '학생'}</p>
                 <p className="text-slate-500">
-                  {cat === 'word'
-                    ? '워드(.docx/.doc) 문서는 MS Word 또는 호환 뷰어에서 열람하실 수 있습니다.'
-                    : cat === 'hwp'
-                    ? '한글(.hwp/.hwpx) 문서는 한글과컴퓨터 한글 뷰어에서 열람하실 수 있습니다.'
-                    : '아래 다운로드 버튼을 눌러 원본 파일을 저장하여 열람하세요.'}
+                  {isAdmin
+                    ? '관리자는 아래 버튼을 통해 원본 문서를 다운로드하여 전체 내용을 편집 및 열람할 수 있습니다.'
+                    : '열람자 권한에서는 보안 정책상 화면 내 첫 페이지 미리보기만 제공되며 원본 파일 다운로드가 제한됩니다.'}
                 </p>
               </div>
 
-              <button
-                onClick={handleDownload}
-                className="w-full py-3 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs sm:text-sm cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>원본 파일 다운로드 및 열기</span>
-              </button>
+              {/* Bottom Action: Admin gets Download, Viewer gets Security Notice */}
+              {isAdmin ? (
+                <button
+                  onClick={handleDownload}
+                  className="w-full py-3 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-xs sm:text-sm cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>원본 파일 다운로드 및 열기</span>
+                </button>
+              ) : (
+                <div className="w-full py-3 bg-slate-100 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center space-x-2">
+                  <Lock className="w-4 h-4 text-slate-400" />
+                  <span>열람자 권한: 화면 내 미리보기 전용 (다운로드 제한됨)</span>
+                </div>
+              )}
             </div>
           )}
         </div>
