@@ -8,7 +8,7 @@ import {
   AlertTriangle,
   Users,
   Sparkles,
-  Info,
+  ShieldCheck,
 } from 'lucide-react';
 import { Student, PRESET_COHORTS } from '../types';
 import {
@@ -109,7 +109,8 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
       alert(
         `🎉 총 ${validRows.length}명의 학생 데이터가 성공적으로 반영되었습니다!\n` +
           `- 새로 등록된 학생: ${createdCount}명\n` +
-          `- 기존 정보 갱신(상담기록 유지): ${updatedCount}명`
+          `- 기존 학생 확인(상담기록·첨부파일 유지): ${updatedCount}명\n` +
+          `※ 개인정보 보호를 위해 성명과 기수만 안전하게 저장되었습니다.`
       );
 
       // Reset and close
@@ -134,7 +135,7 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-emerald-100"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden border border-emerald-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -145,13 +146,13 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                구글 시트 / 엑셀 데이터 가져오기
+                구글 시트 / 엑셀 학생 명부 가져오기
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  일괄 등록
+                  개인정보 보호 적용
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                구글 스프레드시트 또는 엑셀의 학생 명부(기수, 성명, 연락처, 학교 등)를 한 번에 옮겨옵니다.
+                구글 시트나 엑셀에서 학생 명부를 복사하거나 업로드하여 일괄 등록합니다.
               </p>
             </div>
           </div>
@@ -165,6 +166,18 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 flex-1 overflow-y-auto space-y-4 text-xs">
+          {/* Privacy Security Banner */}
+          <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-start space-x-2 text-emerald-900 text-[11px] leading-relaxed">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold">🔒 학생 개인정보 보호 조치 안내</p>
+              <p className="text-emerald-800 mt-0.5">
+                혹시 모를 정보 유출 사고를 방지하기 위해 <strong>기수와 성명(이름)</strong>만 아카이브에 등록됩니다.
+                시트 복사 내용이나 파일에 전화번호, 생년, 학교, 이메일 등이 포함되어 있더라도 자동으로 제외(필터링)되어 안전합니다.
+              </p>
+            </div>
+          </div>
+
           {/* Method Selection Tabs */}
           <div className="flex border-b border-slate-200">
             <button
@@ -217,21 +230,10 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
               <textarea
                 value={pastedText}
                 onChange={(e) => handleTextChange(e.target.value)}
-                placeholder={`예시 (열 순서나 헤더 이름이 달라도 자동 인식됩니다):\n기수\t연번\t성명\t생년\t휴대폰\t메일\t학교\t학과1\t학과2\n1\t1\t홍길동\t1998\t010-1234-5678\thong@email.com\t한국대학교\t경영학과\t빅데이터`}
+                placeholder={`예시 (기수, 성명만 안전하게 추출됩니다):\n기수\t성명\n디금융 8기\t홍길동\n디금융 8기\t김철수`}
                 rows={6}
                 className="w-full p-3 font-mono text-[11px] bg-slate-50 border border-slate-300 rounded-xl text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none leading-relaxed"
               />
-
-              <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-start space-x-2 text-emerald-900 text-[11px]">
-                <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold">💡 편리한 자동 인식 안내:</p>
-                  <p className="text-emerald-800 mt-0.5">
-                    구글 시트의 <strong>기수, 연번, 성명, 생년, 휴대폰, 메일, 학교, 학과1, 학과2</strong> 열이 자동으로 감지됩니다.
-                    기수 칸에 <code className="bg-white/80 px-1 rounded">1</code> 또는 <code className="bg-white/80 px-1 rounded">1기</code>로 적혀 있어도 자동으로 <code className="bg-white/80 px-1 rounded">디금융 1기</code>로 보정되어 기수별 보드로 분류됩니다.
-                  </p>
-                </div>
-              </div>
             </div>
           )}
 
@@ -299,7 +301,7 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
                 <div className="flex items-center space-x-2">
                   <Users className="w-4 h-4 text-emerald-600" />
                   <span className="font-bold text-slate-900">
-                    데이터 미리보기 (총 {parsedRows.length}명 감지)
+                    등록 미리보기 (총 {parsedRows.length}명)
                   </span>
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
                     등록 가능: {validCount}명
@@ -311,7 +313,7 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
                   )}
                 </div>
                 <span className="text-[11px] text-slate-400">
-                  ※ 이미 있는 학생은 기존 상담기록을 유지한 채 인적사항만 최신화됩니다.
+                  ※ 이미 등록된 학생의 기존 상담기록 및 첨부파일은 안전하게 보존됩니다.
                 </span>
               </div>
 
@@ -320,16 +322,11 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
                 <table className="w-full text-[11px] text-left border-collapse">
                   <thead className="bg-slate-100 text-slate-700 sticky top-0 border-b border-slate-200 font-bold z-10">
                     <tr>
-                      <th className="py-2 px-2.5">기수</th>
-                      <th className="py-2 px-2">연번</th>
-                      <th className="py-2 px-2.5">성명</th>
-                      <th className="py-2 px-2">생년</th>
-                      <th className="py-2 px-2.5">휴대폰</th>
-                      <th className="py-2 px-3">메일</th>
-                      <th className="py-2 px-3">학교</th>
-                      <th className="py-2 px-2.5">학과1</th>
-                      <th className="py-2 px-2.5">학과2</th>
-                      <th className="py-2 px-2 text-center">상태</th>
+                      <th className="py-2 px-3 w-12 text-center">No</th>
+                      <th className="py-2 px-3">기수</th>
+                      <th className="py-2 px-4">성명 (이름)</th>
+                      <th className="py-2 px-3 text-slate-500 font-normal">개인정보 필터링</th>
+                      <th className="py-2 px-3 text-center w-16">상태</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -340,28 +337,25 @@ export const SheetImportModal: React.FC<SheetImportModalProps> = ({
                           !row.isValid ? 'bg-rose-50/50 text-rose-700' : ''
                         }`}
                       >
-                        <td className="py-1.5 px-2.5 font-semibold text-teal-800">
+                        <td className="py-2 px-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                        <td className="py-2 px-3 font-semibold text-teal-800">
                           {row.cohort}
                         </td>
-                        <td className="py-1.5 px-2 text-slate-500">{row.orderNo || '-'}</td>
-                        <td className="py-1.5 px-2.5 font-bold text-slate-900">{row.name}</td>
-                        <td className="py-1.5 px-2 text-slate-600">{row.birthYear || '-'}</td>
-                        <td className="py-1.5 px-2.5 font-mono text-slate-700">{row.phone || '-'}</td>
-                        <td className="py-1.5 px-3 text-slate-600 truncate max-w-[140px]">{row.email || '-'}</td>
-                        <td className="py-1.5 px-3 text-slate-700 font-medium truncate max-w-[120px]">{row.university || '-'}</td>
-                        <td className="py-1.5 px-2.5 text-slate-600 truncate max-w-[100px]">{row.major1 || '-'}</td>
-                        <td className="py-1.5 px-2.5 text-slate-500 truncate max-w-[100px]">{row.major2 || '-'}</td>
-                        <td className="py-1.5 px-2 text-center">
+                        <td className="py-2 px-4 font-bold text-slate-900 text-xs">{row.name}</td>
+                        <td className="py-2 px-3 text-slate-400 text-[10px]">
+                          전화번호·학교·생년 등 제외됨
+                        </td>
+                        <td className="py-2 px-3 text-center">
                           {row.isValid ? (
                             <span className="inline-flex items-center text-emerald-600 font-medium">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <CheckCircle2 className="w-4 h-4" />
                             </span>
                           ) : (
                             <span
                               className="inline-flex items-center text-rose-500 font-medium"
                               title={row.error}
                             >
-                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <AlertTriangle className="w-4 h-4" />
                             </span>
                           )}
                         </td>

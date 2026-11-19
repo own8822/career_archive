@@ -148,7 +148,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                     <span>구글 시트 / 엑셀 데이터 가져오기</span>
                   </h4>
                   <p className="text-[11px] text-emerald-800 mt-0.5">
-                    기수, 연번, 성명, 생년, 휴대폰, 메일, 학교, 학과 등의 스프레드시트 명부를 복사-붙여넣기나 파일로 즉시 일괄 등록합니다.
+                    구글 스프레드시트 또는 엑셀 명부에서 기수와 성명(이름)을 추출하여 일괄 등록합니다. (개인정보 보호 필터링 적용)
                   </p>
                 </div>
                 <button

@@ -48,21 +48,21 @@ export interface CounselingRecord {
 
 export interface Student {
   id: string;
-  name: string;
+  name: string; // 학생 성명 (개인정보 최소화: 이름과 기수만 보관)
   cohort: string; // e.g. "디금융 1기", "디금융 8기"
   records: CounselingRecord[];
   attachments?: StudentAttachment[]; // 학생별 첨부파일 (PDF, 워드, 한글, 이미지 등)
   createdAt: string;
 
-  // 구글 시트 / 엑셀 명부 연동 인적사항
-  orderNo?: string | number; // 연번
-  birthYear?: string;        // 생년
-  phone?: string;            // 휴대폰
-  email?: string;            // 이메일
-  university?: string;       // 학교
-  major1?: string;           // 학과1 (주전공)
-  major2?: string;           // 학과2 (복수/부전공)
-  memo?: string;             // 비고 / 메모
+  // 개인정보 보호 조치로 아래 필드는 영구 제거됨 (하위 호환성용 optional)
+  orderNo?: string | number;
+  birthYear?: string;
+  phone?: string;
+  email?: string;
+  university?: string;
+  major1?: string;
+  major2?: string;
+  memo?: string;
   extra?: Record<string, any>;
 }
 

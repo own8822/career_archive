@@ -219,7 +219,7 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
         </div>
       )}
 
-      {/* Column Header: Student Name + Cohort + Academic & Contact Info */}
+      {/* Column Header: Student Name + Cohort (Personal info stripped for privacy) */}
       <div
         className={`p-4 pb-3 border-b rounded-t-2xl transition-colors ${
           isDropped
@@ -229,15 +229,6 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 truncate">
-            {student.orderNo && (
-              <span
-                className={`text-[10px] font-mono px-1 py-0.5 rounded shrink-0 ${
-                  isDropped ? 'text-slate-500 bg-slate-200/90' : 'text-slate-400 bg-slate-100'
-                }`}
-              >
-                #{student.orderNo}
-              </span>
-            )}
             <h3
               className={`text-base font-bold truncate tracking-tight ${
                 isDropped
@@ -291,62 +282,6 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
             </div>
           )}
         </div>
-
-        {/* Academic Info: University & Majors */}
-        {(student.university || student.major1) && (
-          <div
-            className={`mt-1 text-[11px] truncate flex items-center space-x-1 ${
-              isDropped ? 'text-slate-500' : 'text-slate-600'
-            }`}
-          >
-            <span className={isDropped ? 'font-medium text-slate-600' : 'font-semibold text-slate-700'}>
-              {student.university}
-            </span>
-            {student.major1 && <span>· {student.major1}</span>}
-            {student.major2 && <span className="text-slate-400">({student.major2})</span>}
-          </div>
-        )}
-
-        {/* Contact & Birth Info */}
-        {(student.phone || student.email || student.birthYear) && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
-            {student.birthYear && (
-              <span
-                className={`px-1.5 py-0.5 rounded ${
-                  isDropped ? 'bg-slate-200/80 text-slate-600' : 'bg-slate-100/90 text-slate-600'
-                }`}
-              >
-                {student.birthYear}년생
-              </span>
-            )}
-            {student.phone && (
-              <a
-                href={`tel:${student.phone}`}
-                className={`px-1.5 py-0.5 rounded font-mono transition-colors ${
-                  isDropped
-                    ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-600'
-                    : 'bg-slate-100/90 hover:bg-teal-50 hover:text-teal-700 text-slate-600'
-                }`}
-                title="전화 걸기"
-              >
-                {student.phone}
-              </a>
-            )}
-            {student.email && (
-              <a
-                href={`mailto:${student.email}`}
-                className={`px-1.5 py-0.5 rounded transition-colors truncate max-w-[140px] ${
-                  isDropped
-                    ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-600'
-                    : 'bg-slate-100/90 hover:bg-teal-50 hover:text-teal-700 text-slate-600'
-                }`}
-                title={student.email}
-              >
-                {student.email}
-              </a>
-            )}
-          </div>
-        )}
       </div>
 
       {/* 1. Quick Add Record Button directly under student header (Admin only) */}

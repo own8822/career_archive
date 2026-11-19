@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Check, User, Phone, Mail, GraduationCap, Calendar, Hash, FileText } from 'lucide-react';
+import { X, Edit2, Check, User, ShieldCheck } from 'lucide-react';
 import { Student, PRESET_COHORTS } from '../types';
 
 interface EditStudentModalProps {
@@ -17,27 +17,11 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [cohort, setCohort] = useState('');
-  const [orderNo, setOrderNo] = useState('');
-  const [birthYear, setBirthYear] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [university, setUniversity] = useState('');
-  const [major1, setMajor1] = useState('');
-  const [major2, setMajor2] = useState('');
-  const [memo, setMemo] = useState('');
 
   useEffect(() => {
     if (student) {
       setName(student.name || '');
       setCohort(student.cohort || '');
-      setOrderNo(student.orderNo !== undefined ? String(student.orderNo) : '');
-      setBirthYear(student.birthYear || '');
-      setPhone(student.phone || '');
-      setEmail(student.email || '');
-      setUniversity(student.university || '');
-      major1 ? setMajor1(student.major1 || '') : setMajor1(student.major1 || '');
-      setMajor2(student.major2 || '');
-      setMemo(student.memo || '');
     }
   }, [student]);
 
@@ -55,14 +39,14 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
       ...student,
       name: name.trim(),
       cohort: cleanCohort,
-      orderNo: orderNo.trim() ? orderNo.trim() : undefined,
-      birthYear: birthYear.trim() ? birthYear.trim() : undefined,
-      phone: phone.trim() ? phone.trim() : undefined,
-      email: email.trim() ? email.trim() : undefined,
-      university: university.trim() ? university.trim() : undefined,
-      major1: major1.trim() ? major1.trim() : undefined,
-      major2: major2.trim() ? major2.trim() : undefined,
-      memo: memo.trim() ? memo.trim() : undefined,
+      orderNo: undefined,
+      birthYear: undefined,
+      phone: undefined,
+      email: undefined,
+      university: undefined,
+      major1: undefined,
+      major2: undefined,
+      memo: undefined,
     };
 
     onSaveStudent(updated);
@@ -75,7 +59,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden border border-sky-100"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden border border-sky-100"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-sky-100 flex items-center justify-between bg-gradient-to-r from-sky-50 to-teal-50 shrink-0">
@@ -92,6 +76,15 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
+          {/* Privacy Notice Banner */}
+          <div className="p-2.5 rounded-xl bg-teal-50/70 border border-teal-200/80 flex items-start gap-2 text-teal-800 text-[11px] leading-relaxed">
+            <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold block">개인정보 보호 적용 안내</span>
+              개인정보 노출 방지를 위해 성명과 기수만 관리하며, 전화번호·생년·학교·학과 등은 저장되지 않습니다.
+            </div>
+          </div>
+
           {/* Row 1: Name & Cohort */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -141,126 +134,6 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
                   {c}
                 </button>
               ))}
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 pt-3">
-            <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-1 text-xs">
-              <GraduationCap className="w-3.5 h-3.5 text-teal-600" />
-              <span>학적 및 인적사항 (구글 시트 연동 항목)</span>
-            </h4>
-
-            {/* Row 2: OrderNo & BirthYear */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block font-medium text-slate-600 mb-1 flex items-center gap-1">
-                  <Hash className="w-3 h-3 text-slate-400" />
-                  <span>연번</span>
-                </label>
-                <input
-                  type="text"
-                  value={orderNo}
-                  onChange={(e) => setOrderNo(e.target.value)}
-                  placeholder="예: 1"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-slate-400" />
-                  <span>생년</span>
-                </label>
-                <input
-                  type="text"
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
-                  placeholder="예: 1998"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Row 3: Phone & Email */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block font-medium text-slate-600 mb-1 flex items-center gap-1">
-                  <Phone className="w-3 h-3 text-slate-400" />
-                  <span>휴대폰 번호</span>
-                </label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="예: 010-1234-5678"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1 flex items-center gap-1">
-                  <Mail className="w-3 h-3 text-slate-400" />
-                  <span>이메일 주소</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="예: student@email.com"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Row 4: University & Majors */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">학교</label>
-                <input
-                  type="text"
-                  value={university}
-                  onChange={(e) => setUniversity(e.target.value)}
-                  placeholder="예: 한국대학교"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">학과1 (주전공)</label>
-                <input
-                  type="text"
-                  value={major1}
-                  onChange={(e) => setMajor1(e.target.value)}
-                  placeholder="예: 경영학과"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">학과2 (복수전공)</label>
-                <input
-                  type="text"
-                  value={major2}
-                  onChange={(e) => setMajor2(e.target.value)}
-                  placeholder="예: 컴퓨터공학"
-                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Row 5: Memo */}
-            <div>
-              <label className="block font-medium text-slate-600 mb-1 flex items-center gap-1">
-                <FileText className="w-3 h-3 text-slate-400" />
-                <span>비고 / 메모</span>
-              </label>
-              <textarea
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                placeholder="학생 관련 특이사항이나 메모"
-                rows={2}
-                className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs"
-              />
             </div>
           </div>
 

@@ -733,14 +733,6 @@ class LocalArchiveStorage {
                   name: s.name,
                   cohort: s.cohort,
                   createdAt: s.created_at,
-                  orderNo: s.order_no != null ? String(s.order_no) : '',
-                  birthYear: s.birth_year != null ? String(s.birth_year) : '',
-                  phone: s.phone || '',
-                  email: s.email || '',
-                  university: s.university || '',
-                  major1: s.major1 || '',
-                  major2: s.major2 || '',
-                  memo: s.memo || '',
                   records: studentRecords,
                   attachments: finalAttachments,
                 };
@@ -787,13 +779,44 @@ class LocalArchiveStorage {
   async getLocalStudentsOnly(): Promise<Student[]> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
+      const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       const req = store.getAll();
 
       req.onsuccess = async () => {
-        const result = req.result as Student[];
-        resolve(result || []);
+        const result = (req.result as Student[]) || [];
+        let needRewrite = false;
+        const sanitized = result.map((s) => {
+          if (
+            s.phone !== undefined ||
+            s.birthYear !== undefined ||
+            s.email !== undefined ||
+            s.university !== undefined ||
+            s.major1 !== undefined ||
+            s.major2 !== undefined ||
+            s.memo !== undefined ||
+            s.orderNo !== undefined
+          ) {
+            needRewrite = true;
+            return {
+              id: s.id,
+              name: s.name,
+              cohort: s.cohort,
+              createdAt: s.createdAt,
+              records: s.records || [],
+              attachments: s.attachments || [],
+            };
+          }
+          return s;
+        });
+
+        if (needRewrite) {
+          store.clear();
+          for (const clean of sanitized) {
+            store.put(clean);
+          }
+        }
+        resolve(sanitized);
       };
 
       req.onerror = () => reject(req.error);
@@ -809,14 +832,14 @@ class LocalArchiveStorage {
         id: s.id,
         name: s.name,
         cohort: s.cohort,
-        order_no: s.orderNo != null ? String(s.orderNo) : null,
-        birth_year: s.birthYear != null ? String(s.birthYear) : null,
-        phone: s.phone || null,
-        email: s.email || null,
-        university: s.university || null,
-        major1: s.major1 || null,
-        major2: s.major2 || null,
-        memo: s.memo || null,
+        order_no: null,
+        birth_year: null,
+        phone: null,
+        email: null,
+        university: null,
+        major1: null,
+        major2: null,
+        memo: null,
         created_at: s.createdAt || new Date().toISOString(),
       };
 
@@ -868,14 +891,14 @@ class LocalArchiveStorage {
             id: student.id,
             name: student.name,
             cohort: student.cohort,
-            order_no: student.orderNo != null ? String(student.orderNo) : null,
-            birth_year: student.birthYear != null ? String(student.birthYear) : null,
-            phone: student.phone || null,
-            email: student.email || null,
-            university: student.university || null,
-            major1: student.major1 || null,
-            major2: student.major2 || null,
-            memo: student.memo || null,
+            order_no: null,
+            birth_year: null,
+            phone: null,
+            email: null,
+            university: null,
+            major1: null,
+            major2: null,
+            memo: null,
             created_at: new Date().toISOString(),
           };
           const { error } = await client.from('students').insert(studentPayload);
@@ -888,11 +911,20 @@ class LocalArchiveStorage {
       }
     }
 
+    const cleanStudent: Student = {
+      id: student.id,
+      name: student.name,
+      cohort: student.cohort,
+      records: student.records || [],
+      attachments: student.attachments || [],
+      createdAt: student.createdAt || new Date().toISOString(),
+    };
+
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.add(student);
+      const req = store.add(cleanStudent);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
@@ -912,17 +944,18 @@ class LocalArchiveStorage {
       const client = getSupabase();
       if (client) {
         try {
-          const payload: Record<string, any> = {};
+          const payload: Record<string, any> = {
+            order_no: null,
+            birth_year: null,
+            phone: null,
+            email: null,
+            university: null,
+            major1: null,
+            major2: null,
+            memo: null,
+          };
           if (updateObj.name !== undefined) payload.name = updateObj.name;
           if (updateObj.cohort !== undefined) payload.cohort = updateObj.cohort;
-          if (updateObj.phone !== undefined) payload.phone = updateObj.phone;
-          if (updateObj.email !== undefined) payload.email = updateObj.email;
-          if (updateObj.university !== undefined) payload.university = updateObj.university;
-          if (updateObj.major1 !== undefined) payload.major1 = updateObj.major1;
-          if (updateObj.major2 !== undefined) payload.major2 = updateObj.major2;
-          if (updateObj.birthYear !== undefined) payload.birth_year = updateObj.birthYear != null ? String(updateObj.birthYear) : null;
-          if (updateObj.orderNo !== undefined) payload.order_no = updateObj.orderNo != null ? String(updateObj.orderNo) : null;
-          if (updateObj.memo !== undefined) payload.memo = updateObj.memo;
 
           const { error } = await client
             .from('students')
@@ -946,7 +979,17 @@ class LocalArchiveStorage {
       getReq.onsuccess = () => {
         const student = getReq.result as Student | undefined;
         if (student) {
-          Object.assign(student, updateObj);
+          // Clear any PII fields on the local record
+          delete student.orderNo;
+          delete student.birthYear;
+          delete student.phone;
+          delete student.email;
+          delete student.university;
+          delete student.major1;
+          delete student.major2;
+          delete student.memo;
+          if (updateObj.name !== undefined) student.name = updateObj.name;
+          if (updateObj.cohort !== undefined) student.cohort = updateObj.cohort;
           store.put(student);
           resolve();
         } else {
@@ -1139,20 +1182,29 @@ class LocalArchiveStorage {
     if (!parsed || !Array.isArray(parsed.students)) {
       throw new Error('올바른 백업 파일 형식이 아닙니다.');
     }
-    await this.saveAllStudentsLocal(parsed.students);
+    const cleanStudents: Student[] = parsed.students.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      cohort: s.cohort,
+      createdAt: s.createdAt || new Date().toISOString(),
+      records: Array.isArray(s.records) ? s.records : [],
+      attachments: Array.isArray(s.attachments) ? s.attachments : [],
+    }));
+
+    await this.saveAllStudentsLocal(cleanStudents);
     if (parsed.auth) {
       await this.saveAuthSettings(parsed.auth);
     }
 
     // If supabase connected, sync to supabase as well
     if (isSupabaseConfigured()) {
-      await this.seedSupabase(parsed.students);
+      await this.seedSupabase(cleanStudents);
       if (parsed.auth) {
         await this.saveAuthSettings(parsed.auth);
       }
     }
 
-    return parsed.students;
+    return cleanStudents;
   }
 
   async syncLocalToSupabase(): Promise<number> {

@@ -86,7 +86,7 @@ export const AppContent: React.FC = () => {
     return counts;
   }, [students]);
 
-  // Filtered & Sorted Students (연번 1, 2, 3... 기준 가로정렬 순서)
+  // Filtered & Sorted Students (이름 가나다순 정렬)
   const filteredStudents = useMemo(() => {
     const list = students.filter((student) => {
       if (selectedCohort !== 'all' && student.cohort !== selectedCohort) {
@@ -100,19 +100,8 @@ export const AppContent: React.FC = () => {
       );
     });
 
-    // 연번 기준 오름차순 정렬 (연번이 없는 경우 이름 순)
-    return list.sort((a, b) => {
-      const numA = a.orderNo !== undefined && a.orderNo !== '' ? Number(a.orderNo) : Infinity;
-      const numB = b.orderNo !== undefined && b.orderNo !== '' ? Number(b.orderNo) : Infinity;
-
-      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
-        return numA - numB;
-      }
-      if (a.orderNo && b.orderNo && a.orderNo !== b.orderNo) {
-        return String(a.orderNo).localeCompare(String(b.orderNo), undefined, { numeric: true });
-      }
-      return a.name.localeCompare(b.name);
-    });
+    // 학생 성명 가나다순 정렬
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
   }, [students, searchKeyword, selectedCohort]);
 
   // Handler: Add or Update Record
