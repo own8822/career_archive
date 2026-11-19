@@ -12,7 +12,7 @@ import { PdfViewerModal } from './components/PdfViewerModal';
 import { useAuth } from './context/AuthContext';
 import { archiveStorage } from './services/storage';
 import { isSupabaseConfigured } from './services/supabase';
-import { Student, CounselingRecord, PdfAttachment, StudentAttachment, PRESET_COHORTS } from './types';
+import { Student, CounselingRecord, PdfAttachment, PRESET_COHORTS } from './types';
 import { Plus, Users, Database } from 'lucide-react';
 
 export const AppContent: React.FC = () => {
@@ -27,6 +27,7 @@ export const AppContent: React.FC = () => {
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [targetStudentForRecord, setTargetStudentForRecord] = useState<Student | null>(null);
   const [recordToEdit, setRecordToEdit] = useState<CounselingRecord | null>(null);
+  const [initialFilesForRecord, setInitialFilesForRecord] = useState<File[]>([]);
 
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
@@ -201,27 +202,23 @@ export const AppContent: React.FC = () => {
   };
 
   // Quick Open Modal Helpers
-  const handleOpenAddRecord = (student: Student) => {
+  const handleOpenAddRecord = (student: Student, files?: File[]) => {
     setTargetStudentForRecord(student);
     setRecordToEdit(null);
+    setInitialFilesForRecord(files || []);
     setIsRecordModalOpen(true);
   };
 
   const handleOpenEditRecord = (student: Student, record: CounselingRecord) => {
     setTargetStudentForRecord(student);
     setRecordToEdit(record);
+    setInitialFilesForRecord([]);
     setIsRecordModalOpen(true);
   };
 
   const handleOpenEditStudent = (student: Student) => {
     setStudentToEdit(student);
     setIsEditStudentOpen(true);
-  };
-
-  const handleUpdateStudentAttachments = (studentId: string, updatedAttachments: StudentAttachment[]) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === studentId ? { ...s, attachments: updatedAttachments } : s))
-    );
   };
 
   // 비로그인 상태일 경우 메인 대시보드 및 학생 데이터를 전혀 렌더링하지 않고 전용 로그인 화면만 표시
@@ -328,7 +325,6 @@ export const AppContent: React.FC = () => {
                 onEditStudent={handleOpenEditStudent}
                 onDeleteStudent={handleDeleteStudent}
                 onOpenPdf={(pdf, studentName) => setSelectedPdf({ pdf, studentName })}
-                onUpdateAttachments={handleUpdateStudentAttachments}
               />
             ))}
 
@@ -411,10 +407,12 @@ export const AppContent: React.FC = () => {
         onClose={() => {
           setIsRecordModalOpen(false);
           setRecordToEdit(null);
+          setInitialFilesForRecord([]);
         }}
         students={students}
         preselectedStudent={targetStudentForRecord}
         recordToEdit={recordToEdit}
+        initialFiles={initialFilesForRecord}
         onSaveRecord={handleSaveRecord}
       />
 
