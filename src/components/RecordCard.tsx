@@ -23,8 +23,10 @@ export const RecordCard: React.FC<RecordCardProps> = ({
   // 긴 내용인지 판별
   const isLong = record.content.length > 120 || record.content.split('\n').length > 3;
 
-  // 수강포기 기록인지 확인
-  const isDropRecord = `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '').includes('수강포기');
+  // 수강취소 / 수강포기 기록인지 확인
+  const isDropRecord =
+    `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '').includes('수강취소') ||
+    `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '').includes('수강포기');
 
   // 관리자 직접 다운로드 핸들러
   const handleDirectDownload = (pdf: PdfAttachment) => {
@@ -154,7 +156,7 @@ export const RecordCard: React.FC<RecordCardProps> = ({
               </span>
               {isDropRecord && (
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 border border-slate-300">
-                  수강포기
+                  수강취소
                 </span>
               )}
             </div>

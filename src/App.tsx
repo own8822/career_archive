@@ -323,7 +323,6 @@ export const AppContent: React.FC = () => {
                 onEditRecord={handleOpenEditRecord}
                 onDeleteRecord={handleDeleteRecord}
                 onEditStudent={handleOpenEditStudent}
-                onDeleteStudent={handleDeleteStudent}
                 onOpenPdf={(pdf, studentName) => setSelectedPdf({ pdf, studentName })}
               />
             ))}
@@ -433,6 +432,7 @@ export const AppContent: React.FC = () => {
           setStudentToEdit(null);
         }}
         onSaveStudent={handleSaveStudent}
+        onDeleteStudent={handleDeleteStudent}
       />
 
       {/* PDF Zoom Viewer Modal */}

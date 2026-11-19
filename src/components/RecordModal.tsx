@@ -240,18 +240,18 @@ export const RecordModal: React.FC<RecordModalProps> = ({
                 기록 제목 <span className="text-teal-600">*</span>
               </label>
               <div className="flex items-center gap-1">
-                {['1차 취업상담', '이력서·자소서 첨삭', '면접 코칭', '최종 합격', '수강포기'].map((preset) => (
+                {['1차 취업상담', '이력서·자소서 첨삭', '면접 코칭', '최종 합격', '수강취소'].map((preset) => (
                   <button
                     key={preset}
                     type="button"
                     onClick={() => {
                       setTitle(preset);
-                      if (preset === '수강포기' && !content) {
-                        setContent('수강포기');
+                      if ((preset === '수강취소' || preset === '수강포기') && !content) {
+                        setContent('수강취소');
                       }
                     }}
                     className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors cursor-pointer ${
-                      preset === '수강포기'
+                      preset === '수강취소' || preset === '수강포기'
                         ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
                         : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200/70'
                     }`}
@@ -270,10 +270,10 @@ export const RecordModal: React.FC<RecordModalProps> = ({
               required
               autoFocus={!recordToEdit}
             />
-            {title.replace(/\s+/g, '').includes('수강포기') && (
+            {(title.replace(/\s+/g, '').includes('수강취소') || title.replace(/\s+/g, '').includes('수강포기')) && (
               <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                <span>'수강포기' 기록이 저장되면 해당 학생의 박스가 <strong>옅은 회색</strong>으로 전환됩니다.</span>
+                <span>'수강취소' 기록이 저장되면 해당 학생의 박스가 <strong>옅은 회색</strong>으로 전환됩니다.</span>
               </p>
             )}
           </div>

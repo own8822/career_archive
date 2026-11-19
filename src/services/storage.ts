@@ -728,11 +728,18 @@ class LocalArchiveStorage {
                     ? remoteAttachments
                     : localStudent?.attachments || [];
 
+                const isStudentDropped =
+                  (s.memo || '').includes('수강취소') ||
+                  (s.memo || '').includes('수강포기') ||
+                  localStudent?.isDropped === true;
+
                 return {
                   id: s.id,
                   name: s.name,
                   cohort: s.cohort,
                   createdAt: s.created_at,
+                  isDropped: isStudentDropped,
+                  memo: isStudentDropped ? '수강취소' : '',
                   records: studentRecords,
                   attachments: finalAttachments,
                 };
@@ -787,6 +794,12 @@ class LocalArchiveStorage {
         const result = (req.result as Student[]) || [];
         let needRewrite = false;
         const sanitized = result.map((s) => {
+          const isDropped =
+            s.isDropped === true ||
+            (s.memo || '').includes('수강취소') ||
+            (s.memo || '').includes('수강포기');
+          const cleanMemo = isDropped ? '수강취소' : '';
+
           if (
             s.phone !== undefined ||
             s.birthYear !== undefined ||
@@ -794,8 +807,9 @@ class LocalArchiveStorage {
             s.university !== undefined ||
             s.major1 !== undefined ||
             s.major2 !== undefined ||
-            s.memo !== undefined ||
-            s.orderNo !== undefined
+            (s.memo !== undefined && s.memo !== '수강취소') ||
+            s.orderNo !== undefined ||
+            s.isDropped !== isDropped
           ) {
             needRewrite = true;
             return {
@@ -803,6 +817,8 @@ class LocalArchiveStorage {
               name: s.name,
               cohort: s.cohort,
               createdAt: s.createdAt,
+              isDropped,
+              memo: cleanMemo,
               records: s.records || [],
               attachments: s.attachments || [],
             };
@@ -839,7 +855,7 @@ class LocalArchiveStorage {
         university: null,
         major1: null,
         major2: null,
-        memo: null,
+        memo: s.isDropped ? '수강취소' : null,
         created_at: s.createdAt || new Date().toISOString(),
       };
 
@@ -898,7 +914,7 @@ class LocalArchiveStorage {
             university: null,
             major1: null,
             major2: null,
-            memo: null,
+            memo: student.isDropped ? '수강취소' : null,
             created_at: new Date().toISOString(),
           };
           const { error } = await client.from('students').insert(studentPayload);
@@ -952,7 +968,7 @@ class LocalArchiveStorage {
             university: null,
             major1: null,
             major2: null,
-            memo: null,
+            memo: updateObj.isDropped !== undefined ? (updateObj.isDropped ? '수강취소' : null) : (updateObj.memo || null),
           };
           if (updateObj.name !== undefined) payload.name = updateObj.name;
           if (updateObj.cohort !== undefined) payload.cohort = updateObj.cohort;
@@ -990,6 +1006,10 @@ class LocalArchiveStorage {
           delete student.memo;
           if (updateObj.name !== undefined) student.name = updateObj.name;
           if (updateObj.cohort !== undefined) student.cohort = updateObj.cohort;
+          if (updateObj.isDropped !== undefined) {
+            student.isDropped = updateObj.isDropped;
+            student.memo = updateObj.isDropped ? '수강취소' : '';
+          }
           store.put(student);
           resolve();
         } else {

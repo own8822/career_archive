@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Plus,
-  Trash2,
   Edit2,
   UploadCloud,
 } from 'lucide-react';
@@ -15,7 +14,6 @@ interface PadletColumnProps {
   onEditRecord: (student: Student, record: CounselingRecord) => void;
   onDeleteRecord: (studentId: string, recordId: string) => void;
   onEditStudent: (student: Student) => void;
-  onDeleteStudent: (studentId: string) => void;
   onOpenPdf: (pdf: PdfAttachment, studentName: string) => void;
 }
 
@@ -26,17 +24,19 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
   onEditRecord,
   onDeleteRecord,
   onEditStudent,
-  onDeleteStudent,
   onOpenPdf,
 }) => {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-  // Check if student has '수강포기' anywhere in records or memo
+  // Check if student has '수강취소' (or legacy '수강포기') anywhere in status, memo, or records
   const isDropped =
+    student.isDropped === true ||
+    (student.memo || '').includes('수강취소') ||
+    (student.memo || '').includes('수강포기') ||
     student.records.some((record) => {
       const combined = `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '');
-      return combined.includes('수강포기');
-    }) || (student.memo || '').replace(/\s+/g, '').includes('수강포기');
+      return combined.includes('수강취소') || combined.includes('수강포기');
+    });
 
   // Drag & Drop handlers on Card: Dropping files directly opens the record modal with those files!
   const handleDragOver = (e: React.DragEvent) => {
@@ -125,11 +125,11 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
               {student.cohort}
             </span>
 
-            {/* Dropped Badge (수강포기 뱃지) */}
+            {/* Dropped Badge (수강취소 뱃지) */}
             {isDropped && (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-300 text-slate-700 border border-slate-400/80 shrink-0 flex items-center space-x-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
-                <span>수강포기</span>
+                <span>수강취소</span>
               </span>
             )}
           </div>
@@ -142,17 +142,6 @@ export const PadletColumn: React.FC<PadletColumnProps> = ({
                 title="학생 정보 수정"
               >
                 <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm(`'${student.name}' 학생의 모든 기록과 카드를 삭제하시겠습니까?`)) {
-                    onDeleteStudent(student.id);
-                  }
-                }}
-                className="text-slate-300 hover:text-rose-500 p-1 rounded-md transition-colors cursor-pointer"
-                title="학생 삭제"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           )}

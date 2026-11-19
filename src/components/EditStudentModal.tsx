@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit2, Check, User, ShieldCheck } from 'lucide-react';
+import { X, Edit2, Check, User, ShieldCheck, UserX, RotateCcw } from 'lucide-react';
 import { Student, PRESET_COHORTS } from '../types';
 
 interface EditStudentModalProps {
@@ -7,6 +7,7 @@ interface EditStudentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveStudent: (updatedStudent: Student) => void;
+  onDeleteStudent?: (studentId: string) => void;
 }
 
 export const EditStudentModal: React.FC<EditStudentModalProps> = ({
@@ -14,14 +15,25 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
   isOpen,
   onClose,
   onSaveStudent,
+  onDeleteStudent,
 }) => {
   const [name, setName] = useState('');
   const [cohort, setCohort] = useState('');
+  const [isDropped, setIsDropped] = useState(false);
 
   useEffect(() => {
     if (student) {
       setName(student.name || '');
       setCohort(student.cohort || '');
+      const dropped =
+        student.isDropped === true ||
+        (student.memo || '').includes('수강취소') ||
+        (student.memo || '').includes('수강포기') ||
+        (student.records || []).some((record) => {
+          const combined = `${record.title || ''} ${record.content || ''}`.replace(/\s+/g, '');
+          return combined.includes('수강취소') || combined.includes('수강포기');
+        });
+      setIsDropped(dropped);
     }
   }, [student]);
 
@@ -39,6 +51,8 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
       ...student,
       name: name.trim(),
       cohort: cleanCohort,
+      isDropped: isDropped,
+      memo: isDropped ? '수강취소' : '',
       orderNo: undefined,
       birthYear: undefined,
       phone: undefined,
@@ -46,9 +60,38 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
       university: undefined,
       major1: undefined,
       major2: undefined,
-      memo: undefined,
     };
 
+    onSaveStudent(updated);
+    onClose();
+  };
+
+  const handleDelete = () => {
+    if (!student || !onDeleteStudent) return;
+    if (confirm(`'${student.name}' 학생의 모든 기록을 정말로 완전히 삭제하시겠습니까?`)) {
+      onDeleteStudent(student.id);
+      onClose();
+    }
+  };
+
+  const handleQuickToggleCancel = () => {
+    const nextDropped = !isDropped;
+    setIsDropped(nextDropped);
+    const cleanCohort = cohort.trim() ? (cohort.trim().endsWith('기') ? cohort.trim() : `${cohort.trim()}기`) : student.cohort;
+    const updated: Student = {
+      ...student,
+      name: name.trim() || student.name,
+      cohort: cleanCohort,
+      isDropped: nextDropped,
+      memo: nextDropped ? '수강취소' : '',
+      orderNo: undefined,
+      birthYear: undefined,
+      phone: undefined,
+      email: undefined,
+      university: undefined,
+      major1: undefined,
+      major2: undefined,
+    };
     onSaveStudent(updated);
     onClose();
   };
@@ -137,21 +180,115 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 flex justify-end space-x-2 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-1.5 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer font-medium"
+          {/* 수강취소 설정 영역 */}
+          <div className="pt-3 border-t border-slate-200">
+            <div
+              className={`p-3.5 rounded-xl border transition-all ${
+                isDropped
+                  ? 'bg-slate-100/90 border-slate-300 text-slate-800'
+                  : 'bg-slate-50/70 border-slate-200 text-slate-700'
+              }`}
             >
-              취소
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold flex items-center space-x-1 cursor-pointer"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>수정 완료</span>
-            </button>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center space-x-1.5 font-bold text-xs">
+                    <UserX className="w-3.5 h-3.5 text-slate-600" />
+                    <span>수강 상태</span>
+                    {isDropped ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-300 text-slate-800">
+                        수강취소 적용됨
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                        정상 수강 중
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    '수강취소'를 클릭하면 학생 박스의 배경색이 <strong>옅은 회색</strong>으로 전환됩니다.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsDropped(!isDropped)}
+                  className={`shrink-0 px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs flex items-center space-x-1.5 cursor-pointer ${
+                    isDropped
+                      ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
+                      : 'bg-slate-700 hover:bg-slate-800 text-white'
+                  }`}
+                >
+                  {isDropped ? (
+                    <>
+                      <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                      <span>수강취소 해제</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserX className="w-3.5 h-3.5 text-slate-200" />
+                      <span>수강취소</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Modal Footer */}
+          <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+            <div className="flex items-center space-x-2">
+              {/* Direct Quick Action '수강취소' Button */}
+              <button
+                type="button"
+                onClick={handleQuickToggleCancel}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer shadow-2xs ${
+                  isDropped
+                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                    : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                }`}
+                title={isDropped ? '수강취소 상태를 해제하고 정상 수강으로 복원합니다' : '수강취소 상태로 즉시 변경하고 박스를 옅은 회색으로 전환합니다'}
+              >
+                {isDropped ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                    <span>수강취소 해제</span>
+                  </>
+                ) : (
+                  <>
+                    <UserX className="w-3.5 h-3.5 text-slate-600" />
+                    <span>수강취소</span>
+                  </>
+                )}
+              </button>
+
+              {onDeleteStudent && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-2 py-1.5 text-slate-400 hover:text-rose-600 transition-colors text-[11px] cursor-pointer"
+                  title="학생 영구 삭제"
+                >
+                  학생 삭제
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3.5 py-1.5 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer font-medium"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold flex items-center space-x-1 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>수정 완료</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

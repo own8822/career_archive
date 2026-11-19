@@ -53,6 +53,8 @@ export interface Student {
   records: CounselingRecord[];
   attachments?: StudentAttachment[]; // 학생별 첨부파일 (PDF, 워드, 한글, 이미지 등)
   createdAt: string;
+  isDropped?: boolean; // 수강취소 여부 (true일 경우 학생 박스 옅은 회색 전환)
+  status?: string;
 
   // 개인정보 보호 조치로 아래 필드는 영구 제거됨 (하위 호환성용 optional)
   orderNo?: string | number;
